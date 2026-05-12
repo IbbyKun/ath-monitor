@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api.service';
 import { extractSSOToken, useAuthStore } from '../lib/auth-store';
@@ -36,27 +36,18 @@ export default function SSOGate({ children }) {
   });
   const [ready, setReady] = useState(!ssoToken); // if no SSO token, render immediately
   const [error, setError] = useState(null);
-  // Guard so the SSO exchange only fires once for the lifetime of the
-  // gate. Without this, useEffect's dependency array (which includes
-  // `navigate` and the session setters) can cause the effect to re-run
-  // on subsequent route changes, and each re-run navigates the user
-  // back to /admin/dashboard.
-  const ranRef = useRef(false);
 
   useEffect(() => {
-    if (!ssoToken || ranRef.current) return;
-    ranRef.current = true;
+    if (!ssoToken) return;
 
-    // No `cancelled` flag / cleanup — the ranRef guard above already
-    // makes this a one-shot. Adding the cancelled gate caused React's
-    // effect-cleanup (StrictMode / re-render) to abort the in-flight
-    // SSO Promise after the network call succeeded, so the user got
-    // stuck on the spinner even though the backend signed them in.
+    let cancelled = false;
+
     (async () => {
       try {
         // Use authInstance (same axios instance as the working login flows)
         // to ensure consistent headers, CORS, and baseURL behavior
         const res = await apiService.authInstance.post('/auth/sso', { token: ssoToken });
+        if (cancelled) return;
 
         const {
           data: accessToken,
@@ -75,15 +66,6 @@ export default function SSOGate({ children }) {
           photo_path,
         } = res.data;
 
-        // Backend booleans can be wrong when the emp-monitor row has a
-        // custom role label that doesn't match "manager"/"employee"/"team lead"
-        // exactly (the backend defaults the cascade to is_manager=true in
-        // that case). Fall back to the role string so empcloud "employee"
-        // users always land on the employee dashboard.
-        const normalizedRole = (role || '').toLowerCase().replace(/\s+/g, '');
-        const isAdminFinal    = is_admin === true;
-        const isEmployeeFinal = !isAdminFinal && (is_employee === true || normalizedRole === 'employee');
-
         const userData = {
           user_name,
           full_name,
@@ -91,10 +73,10 @@ export default function SSOGate({ children }) {
           user_id,
           u_id,
           organization_id,
-          is_admin: isAdminFinal,
-          is_manager: !isAdminFinal && !isEmployeeFinal && (is_manager === true || normalizedRole === 'manager'),
+          is_admin,
+          is_manager,
           is_teamlead,
-          is_employee: isEmployeeFinal,
+          is_employee,
           role,
           role_id,
           photo_path,
@@ -115,9 +97,9 @@ export default function SSOGate({ children }) {
 
         // Hydrate the role-specific session store directly
         // so protected route guards see it immediately (same as the login pages do)
-        if (isAdminFinal) {
+        if (is_admin) {
           setAdmin(sessionData);
-        } else if (isEmployeeFinal) {
+        } else if (is_employee) {
           setEmployee(sessionData);
         } else {
           setNonAdmin(sessionData);
@@ -139,11 +121,12 @@ export default function SSOGate({ children }) {
         );
 
         // Navigate based on role
-        const dest = isAdminFinal ? '/admin/dashboard'
-          : isEmployeeFinal ? '/employee/dashboard'
+        const dest = is_admin ? '/admin/dashboard'
+          : is_employee ? '/employee/dashboard'
           : '/non-admin/dashboard';
         navigate(dest, { replace: true });
       } catch (err) {
+        if (cancelled) return;
         console.error('SSO login failed:', err);
         // Log details to help diagnose — network errors have no response
         if (err.response) {
@@ -155,9 +138,13 @@ export default function SSOGate({ children }) {
           err.response?.data?.message || 'SSO login failed. Please log in manually.'
         );
       } finally {
-        setReady(true);
+        if (!cancelled) setReady(true);
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [ssoToken, login, navigate, setAdmin, setNonAdmin, setEmployee]);
 
   if (!ready) {
