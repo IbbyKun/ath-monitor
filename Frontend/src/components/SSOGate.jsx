@@ -145,7 +145,14 @@ export default function SSOGate({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [ssoToken, login, navigate, setAdmin, setNonAdmin, setEmployee]);
+    // Only re-run on ssoToken — `navigate` gets a new identity on every
+    // route change, which would otherwise re-fire the SSO POST and
+    // bounce the user back to the dashboard each time they click a
+    // sidebar link. The Zustand setters/login are stable singletons,
+    // and the navigate closure captured here still works after route
+    // changes because it dispatches through the live router state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ssoToken]);
 
   if (!ready) {
     return (
