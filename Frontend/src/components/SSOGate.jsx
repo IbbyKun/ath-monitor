@@ -75,6 +75,15 @@ export default function SSOGate({ children }) {
           photo_path,
         } = res.data;
 
+        // Backend booleans can be wrong when the emp-monitor row has a
+        // custom role label that doesn't match "manager"/"employee"/"team lead"
+        // exactly (the backend defaults the cascade to is_manager=true in
+        // that case). Fall back to the role string so empcloud "employee"
+        // users always land on the employee dashboard.
+        const normalizedRole = (role || '').toLowerCase().replace(/\s+/g, '');
+        const isAdminFinal    = is_admin === true;
+        const isEmployeeFinal = !isAdminFinal && (is_employee === true || normalizedRole === 'employee');
+
         const userData = {
           user_name,
           full_name,
@@ -82,10 +91,10 @@ export default function SSOGate({ children }) {
           user_id,
           u_id,
           organization_id,
-          is_admin,
-          is_manager,
+          is_admin: isAdminFinal,
+          is_manager: !isAdminFinal && !isEmployeeFinal && (is_manager === true || normalizedRole === 'manager'),
           is_teamlead,
-          is_employee,
+          is_employee: isEmployeeFinal,
           role,
           role_id,
           photo_path,
@@ -106,9 +115,9 @@ export default function SSOGate({ children }) {
 
         // Hydrate the role-specific session store directly
         // so protected route guards see it immediately (same as the login pages do)
-        if (is_admin) {
+        if (isAdminFinal) {
           setAdmin(sessionData);
-        } else if (is_employee) {
+        } else if (isEmployeeFinal) {
           setEmployee(sessionData);
         } else {
           setNonAdmin(sessionData);
@@ -130,8 +139,8 @@ export default function SSOGate({ children }) {
         );
 
         // Navigate based on role
-        const dest = is_admin ? '/admin/dashboard'
-          : is_employee ? '/employee/dashboard'
+        const dest = isAdminFinal ? '/admin/dashboard'
+          : isEmployeeFinal ? '/employee/dashboard'
           : '/non-admin/dashboard';
         navigate(dest, { replace: true });
       } catch (err) {
