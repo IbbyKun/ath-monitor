@@ -120,11 +120,15 @@ export default function SSOGate({ children }) {
           `${window.location.protocol}//${empCloudHost}/dashboard`,
         );
 
-        // Navigate based on role
+        // Navigate based on role. Use a full-page reload (not React
+        // Router's navigate) so the URL hard-loads the destination —
+        // this guarantees the SSO effect won't re-fire on subsequent
+        // sidebar clicks (the captured navigate ref + Zustand setters
+        // can otherwise interact badly with re-mounts and re-renders).
         const dest = is_admin ? '/admin/dashboard'
           : is_employee ? '/employee/dashboard'
           : '/non-admin/dashboard';
-        navigate(dest, { replace: true });
+        window.location.replace(dest);
       } catch (err) {
         if (cancelled) return;
         console.error('SSO login failed:', err);
@@ -145,14 +149,7 @@ export default function SSOGate({ children }) {
     return () => {
       cancelled = true;
     };
-    // Only re-run on ssoToken — `navigate` gets a new identity on every
-    // route change, which would otherwise re-fire the SSO POST and
-    // bounce the user back to the dashboard each time they click a
-    // sidebar link. The Zustand setters/login are stable singletons,
-    // and the navigate closure captured here still works after route
-    // changes because it dispatches through the live router state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ssoToken]);
+  }, [ssoToken, login, navigate, setAdmin, setNonAdmin, setEmployee]);
 
   if (!ready) {
     return (
