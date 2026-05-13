@@ -32,7 +32,17 @@ export default function BulkUpdateModal({ open, onOpenChange, onSuccess }) {
       });
       onSuccess?.();
     } else {
-      setResult({ type: "error", msg: res?.msg || t("emp_bulk_update_failed") });
+      // Backend returns { code, message, error, data } — prefer the human
+      // message; fall back to the generic translated string only if missing.
+      setResult({ type: "error", msg: res?.message || res?.msg || t("emp_bulk_update_failed") });
+      // code === -1 → browser-level upload abort (commonly Chromium's
+      // ERR_UPLOAD_FILE_CHANGED, which happens if the user edits and re-saves
+      // the picked XLSX between attempts). The File handle is now stale and
+      // the next click would fail the same way. Force a fresh selection.
+      if (res?.code === -1) {
+        setFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -78,18 +88,23 @@ export default function BulkUpdateModal({ open, onOpenChange, onSuccess }) {
                 setDownloading(true);
                 try {
                   const employees = await fetchEmployeeList();
-                  const headers = ["First Name", "Last Name", "Full Name", "UserName", "Email",
-                    "Employee ID", "Employee Unique ID", "Last Login", "Location", "Department",
-                    "Role"];
+                  // Header text must exactly match the backend's column map at
+                  // Backend/admin/src/utils/helpers/LanguageTranslate.js
+                  // (bulkRegAndUpdate.en) — case-sensitive. Previously this
+                  // shipped "Employee ID" and "Employee Unique ID", which the
+                  // backend reads as "Employee Code" and "Employee Unique Id",
+                  // so every uploaded row had EmployeeCode/EmployeeUniqueId
+                  // undefined and Joi 400'd with "EmployeeCode is not provided
+                  // for some users." (see #198).
+                  const headers = ["First Name", "Last Name", "Email",
+                    "Employee Code", "Employee Unique Id", "Location",
+                    "Department", "Role"];
                   const rows = employees.map((emp) => [
                     emp.first_name || emp.name || "",
                     emp.last_name || "",
-                    emp.full_name || "",
-                    emp.username || "",
                     emp.email || "",
                     emp.emp_code || "",
                     emp.employee_unique_id || "",
-                    emp.employee_updated_at || "",
                     emp.location || "",
                     emp.department || "",
                     emp.role || (Array.isArray(emp.roles) && emp.roles[0]?.role) || "",
