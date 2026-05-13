@@ -46,6 +46,7 @@ import MobileTaskDetails       from './page/protected/admin/mobile-task-details'
 import MobileTaskGeolocation   from './page/protected/admin/mobile-task-geolocation'
 import ResellerDashboard       from './page/protected/admin/reseller-dashboard'
 import ResellerSettings        from './page/protected/admin/reseller-settings'
+import AddonFeatures           from './page/protected/admin/addon-features'
 
 // Non-admin pages
 import NonAdminDashboard          from './page/protected/non-admin/dashboard'
@@ -131,6 +132,9 @@ function App() {
         <Route path="/admin/mobiletask/geolocation"      element={<AdminProtectedRoute><MobileTaskGeolocation /></AdminProtectedRoute>} />
         <Route path="/admin/reseller/dashboard"          element={<AdminProtectedRoute><ResellerDashboard /></AdminProtectedRoute>} />
         <Route path="/admin/reseller/settings"           element={<AdminProtectedRoute><ResellerSettings /></AdminProtectedRoute>} />
+
+        {/* ── Addon Features (gated to super admin / operator org inside the page) ── */}
+        <Route path="/admin/addon-features"              element={<AdminProtectedRoute><AddonFeatures /></AdminProtectedRoute>} />
 
         {/* ── Non-admin routes ── */}
         <Route path="/non-admin/dashboard"               element={<NonAdminProtectedRoute><NonAdminDashboard /></NonAdminProtectedRoute>} />

@@ -19,6 +19,7 @@ class MySqlSingelton {
         this.mySqlPool = mysql.createPool({
             connectionLimit: parseInt(process.env.MYSQL_POOL_CONNECTION_LIMIT),
             host: process.env.MYSQL_HOST,
+            port: process.env.MYSQL_PORT ? parseInt(process.env.MYSQL_PORT, 10) : 3306,
             user: process.env.MYSQL_USERNAME,
             password: process.env.MYSQL_PASSWORD,
             database: process.env.MYSQL_DBNAME,

@@ -32,14 +32,29 @@ import {
   ReceiptText,
   Key,
   Store,
+  ToggleRight,
 } from "lucide-react";
 import AppMenuItems from "./AppMenuItems";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import downloadIcon from "@/assets/agentdwnld.png";
 import AgentDownloadOverlay from "@/page/protected/admin/agent-download";
 import apiService from "@/services/api.service";
+import useAdminSession from "@/sessions/adminSession";
+import { getSessionCookie } from "@/lib/sessionCookie";
 
-const getMenuItems = (t) => [
+// Mirrors the backend gate: super admin OR a user in the env-configured
+// operator org can see and use the addon-features console.
+const hasAddonFeaturesAccess = (session) => {
+  if (!session) return false;
+  if (session.is_admin === true) return true;
+  const raw = import.meta.env.VITE_ADDON_SUPERADMIN_ORG_ID;
+  if (raw === undefined || raw === null || raw === "") return false;
+  const operatorOrgId = Number(raw);
+  if (!Number.isFinite(operatorOrgId)) return false;
+  return Number(session.organization_id) === operatorOrgId;
+};
+
+const getMenuItems = (t, { showAddonFeatures = false } = {}) => [
   { title: t("dashboard"), url: "/admin/dashboard", icon: LayoutDashboard },
   {
     title: t("employees"),
@@ -114,6 +129,9 @@ const getMenuItems = (t) => [
       { title: t("settings"), url: "/admin/reseller/settings" },
     ],
   },
+  ...(showAddonFeatures
+    ? [{ title: "Addon Features", url: "/admin/addon-features", icon: ToggleRight }]
+    : []),
 ];
 
 const normalizeResellerStats = (payload = {}) => {
@@ -135,7 +153,11 @@ export function AppSidebar() {
   const { open } = useSidebar();
   const [openKey, setOpenKey] = useState(null);
   const [agentDownloadOpen, setAgentDownloadOpen] = useState(false);
-  const menuItems = getMenuItems(t);
+  const { admin } = useAdminSession();
+  // Cookie fallback for the first paint before the store hydrates.
+  const session = admin || getSessionCookie();
+  const showAddonFeatures = hasAddonFeaturesAccess(session);
+  const menuItems = getMenuItems(t, { showAddonFeatures });
   const [licenseStats, setLicenseStats] = useState({
     totalLicenses: 0,
     usedLicenses: 0,
