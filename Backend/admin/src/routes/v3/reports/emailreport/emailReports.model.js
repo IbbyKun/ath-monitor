@@ -69,26 +69,30 @@ class EmailReportsModel {
     }
 
     updateEmailReport(name, frequency, recipients, content, filter_type, email_report_id, report_types, custom, location_ids, shift_ids) {
-        let update = '';
-        if (name) update += `name='${name}'`;
-        if (frequency) { update += update ? `, frequency=${frequency}` : `frequency=${frequency}`; }
-        if (recipients) { update += update ? `, recipients="${recipients}"` : `recipients="${recipients}"`; }
-        if (content) { update += update ? `, content='${content}'` : `content='${content}'`; }
-        if (filter_type) { update += update ? `, filter_type=${filter_type}` : `filter_type=${filter_type}`; }
-        if (report_types) { update += update ? `, report_types='${report_types}'` : `report_types='${report_types}'`; }
-        update += custom ? `, custom='${custom}'` : `, custom=NULL`;
-        if(location_ids?.length) update += ` , location_ids = "${location_ids.length ? location_ids.join(',') : ""}" `
-        if(shift_ids?.length) update += ` , shift_ids = "${shift_ids.length ? shift_ids.join(',') : ""}" `
-        if (!update) {
-            return Promise.resolve()
+        const sets = [];
+        const params = [];
+        if (name) { sets.push('name = ?'); params.push(name); }
+        if (frequency) { sets.push('frequency = ?'); params.push(frequency); }
+        if (recipients) {
+            sets.push('recipients = ?');
+            params.push(Array.isArray(recipients) ? recipients.join(',') : recipients);
         }
-        const query = `
-            UPDATE email_reports
-            SET ${update}
-            WHERE id=${email_report_id}
-        `;
+        if (content) { sets.push('content = ?'); params.push(content); }
+        if (filter_type) { sets.push('filter_type = ?'); params.push(filter_type); }
+        if (report_types) {
+            sets.push('report_types = ?');
+            params.push(Array.isArray(report_types) ? report_types.join(',') : report_types);
+        }
+        sets.push('custom = ?');
+        params.push(custom || null);
+        if (location_ids?.length) { sets.push('location_ids = ?'); params.push(location_ids.join(',')); }
+        if (shift_ids?.length) { sets.push('shift_ids = ?'); params.push(shift_ids.join(',')); }
 
-        return mySql.query(query)
+        if (sets.length === 0) return Promise.resolve();
+
+        params.push(email_report_id);
+        const query = `UPDATE email_reports SET ${sets.join(', ')} WHERE id = ?`;
+        return mySql.query(query, params);
     }
 
     deleteUserFromReport(employees, email_report_id = null) {
