@@ -43,6 +43,31 @@ export const editEmployee = async (formData) => {
   }
 };
 
+/**
+ * Upload an employee profile picture.
+ *
+ * The v3 `/user/user-profile-update` endpoint is JSON-only and ignores any
+ * uploaded file (the controller preserves the existing `photo_path`). Pictures
+ * must go through this dedicated multer endpoint, which writes the file to
+ * cloud storage and updates `users.photo_path`. Field name is `avatar` and the
+ * user id is passed as a query parameter — match the backend exactly.
+ */
+export const uploadEmployeeProfilePic = async (userId, file) => {
+  if (!userId || !file) return null;
+  try {
+    const fd = new FormData();
+    fd.append("avatar", file);
+    const { data } = await apiService.apiInstance.post(
+      `/user/upload-profilepic-drive?user_id=${encodeURIComponent(userId)}`,
+      fd,
+    );
+    return data ?? null;
+  } catch (error) {
+    console.error("Employee Details: uploadEmployeeProfilePic error", error);
+    return error?.response?.data ?? { code: 500, message: error?.message || "Profile picture upload failed." };
+  }
+};
+
 export const deleteEmployee = async (userId) => {
   try {
     const { data } = await apiService.apiInstance.delete("/user/user-delete-multiple", {
@@ -362,6 +387,7 @@ export const mapEmployeeForTable = (emp, idx = 0) => {
     empCode: emp.emp_code || "-",
     os: emp.system_architecture || "Windows",
     computer: emp.computer_name || emp.username || "N/A",
-    version: emp.software_version || "N/A"
+    version: emp.software_version || "N/A",
+    photoPath: emp.photo_path || ""
   };
 };

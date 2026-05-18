@@ -6,6 +6,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 export default function ProfileHeader({ employee, startDate, endDate, onDateChange, showActions = true, onEdit }) {
   const { t } = useTranslation();
   const name = employee?.name || t("employee");
+  const photo = employee?.photo_path || employee?.photoPath || "";
+  const hasRealPhoto = photo && !/\/default\/profilePic\//i.test(photo);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -35,9 +37,14 @@ export default function ProfileHeader({ employee, startDate, endDate, onDateChan
               padding: "3px",
             }}
           >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-violet-600 to-blue-500 flex items-center justify-center text-white text-2xl font-bold">
-              {name.charAt(0).toUpperCase()}
-            </div>
+            {hasRealPhoto ? (
+              <img src={photo} alt={name}
+                className="w-full h-full rounded-full object-cover bg-white" />
+            ) : (
+              <div className="w-full h-full rounded-full bg-gradient-to-br from-violet-600 to-blue-500 flex items-center justify-center text-white text-2xl font-bold">
+                {name.charAt(0).toUpperCase()}
+              </div>
+            )}
           </div>
         </div>
         <div className="min-w-0">

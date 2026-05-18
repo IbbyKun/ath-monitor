@@ -41,11 +41,22 @@ const avatarColors = [
   "bg-orange-400", "bg-rose-500", "bg-teal-500", "bg-cyan-500",
 ];
 
-const RowAvatar = ({ name, idx }) => {
+const RowAvatar = ({ name, idx, photo }) => {
   const color = avatarColors[idx % avatarColors.length];
+  const initial = (name || "?").charAt(0).toUpperCase();
+  // photo_path may be a `/default/profilePic/...` placeholder — fall back to
+  // the colored initial in that case so we don't show the same user.png for
+  // every employee.
+  const isReal = photo && !/\/default\/profilePic\//i.test(photo);
+  if (isReal) {
+    return (
+      <img src={photo} alt={initial}
+        className="w-7 h-7 rounded-full object-cover flex-shrink-0 border border-gray-200" />
+    );
+  }
   return (
     <div className={`w-7 h-7 rounded-full ${color} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
-      {(name || "?").charAt(0).toUpperCase()}
+      {initial}
     </div>
   );
 };
@@ -393,7 +404,7 @@ export default function EmployeeDetailsTable({
                   <TableCell className="pl-3 py-2.5">
                     <div className="flex items-center gap-2 cursor-pointer group"
                       onClick={() => navigate(`${employeeProfilePath}?id=${emp.id}`, { state: { employee: emp } })}>
-                      <RowAvatar name={emp.name} idx={idx} />
+                      <RowAvatar name={emp.name} idx={idx} photo={emp.photoPath} />
                       <span className="text-[13px] font-medium text-gray-700 whitespace-nowrap group-hover:text-blue-600 group-hover:underline transition-colors">
                         {emp.name}
                       </span>

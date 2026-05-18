@@ -1,7 +1,7 @@
 /**
  * Shared form fields used by both RegisterEmployeeModal and EditEmployeeModal.
  */
-import { useRef } from "react";
+import { useRef, useEffect, useMemo } from "react";
 import { Eye, EyeOff, Info, ImagePlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,10 +29,25 @@ export default function EmployeeFormBody({
   showConfirmPassword, setShowConfirmPassword,
   locations = [], roles = [], shifts = [],
   departments = [], deptLoading = false,
+  existingPhoto = "",
   isEdit = false,
 }) {
   const { t } = useTranslation();
   const fileInputRef = useRef(null);
+
+  // Build a thumbnail src: prefer a freshly-picked File (object URL), else the
+  // existing photo_path returned by the backend. The URL is created during
+  // render so we don't trigger a setState-in-effect, and revoked when the File
+  // reference changes or the component unmounts.
+  const pickedPreview = useMemo(
+    () => (form.profilePicture instanceof File ? URL.createObjectURL(form.profilePicture) : ""),
+    [form.profilePicture],
+  );
+  useEffect(() => {
+    if (!pickedPreview) return undefined;
+    return () => URL.revokeObjectURL(pickedPreview);
+  }, [pickedPreview]);
+  const previewSrc = pickedPreview || existingPhoto || "";
 
   return (
     <div className="px-8 pt-6 pb-2 space-y-5">
@@ -198,8 +213,12 @@ export default function EmployeeFormBody({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-5">
         <Field label={t("emp_profile_picture")} extra={<Info size={14} className="text-blue-500 inline ml-1" />}>
           <div onClick={() => fileInputRef.current?.click()}
-            className="relative h-11 rounded-xl border border-gray-300 bg-white flex items-center px-5 cursor-pointer hover:border-blue-300 transition-colors">
-            <span className="text-[13px] text-gray-400 flex-1 truncate">
+            className="relative h-11 rounded-xl border border-gray-300 bg-white flex items-center px-2 cursor-pointer hover:border-blue-300 transition-colors gap-2">
+            {previewSrc ? (
+              <img src={previewSrc} alt=""
+                className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-gray-200" />
+            ) : null}
+            <span className="text-[13px] text-gray-400 flex-1 truncate pl-1">
               {form.profilePicture ? form.profilePicture.name : t("emp_choose_file")}
             </span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center ml-2">

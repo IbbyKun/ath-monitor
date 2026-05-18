@@ -53,10 +53,11 @@ export const mapEmployeeForTable = (emp, idx = 0) => ({
   role:
     emp.role ||
     (Array.isArray(emp.roles) && emp.roles.length ? emp.roles[0].role : "Employee"),
-  empCode:  emp.emp_code || "-",
-  os:       emp.system_architecture || "Windows",
-  computer: emp.computer_name || emp.username || "N/A",
-  version:  emp.software_version || "N/A",
+  empCode:   emp.emp_code || "-",
+  os:        emp.system_architecture || "Windows",
+  computer:  emp.computer_name || emp.username || "N/A",
+  version:   emp.software_version || "N/A",
+  photoPath: emp.photo_path || "",
 });
 
 export { fetchFilterOptions } from "../../admin/employee-details/service";

@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useEmployeeForm } from "./useEmployeeForm";
 import EmployeeFormBody from "./EmployeeFormBody";
-import { registerEmployee } from "@/page/protected/admin/employee-details/service";
+import { registerEmployee, uploadEmployeeProfilePic } from "@/page/protected/admin/employee-details/service";
 
 export default function RegisterEmployeeModal({ open, onOpenChange, locations = [], roles = [], shifts = [], onSuccess }) {
   const { t } = useTranslation();
@@ -24,13 +24,21 @@ export default function RegisterEmployeeModal({ open, onOpenChange, locations = 
     setSubmitting(true);
     setStatus(null);
     const res = await registerEmployee(buildFormData());
-    setSubmitting(false);
     if (res?.code === 200) {
+      // The register endpoint is JSON-only and can't accept the picked file.
+      // The controller assigns the new employee id to req.body.user_id before
+      // echoing it back, so use that to drive the dedicated avatar upload.
+      const newUserId = res?.data?.user_id ?? res?.data?.userId;
+      if (form.profilePicture && newUserId) {
+        await uploadEmployeeProfilePic(newUserId, form.profilePicture);
+      }
+      setSubmitting(false);
       setStatus({ type: "success", msg: t("emp_registered_successfully") });
       reset();
       onSuccess?.();
       setTimeout(() => { onOpenChange(false); setStatus(null); }, 1200);
     } else {
+      setSubmitting(false);
       const errMsg = res?.error || res?.message || res?.msg || res?.data?.message || t("emp_registration_failed");
       const errLower = (errMsg || "").toLowerCase();
       const fieldErrors = {};
