@@ -253,17 +253,26 @@ const ProductivityComp = () => {
     fetchStats()
   }, [rightEmployee, rightDateFrom, rightDateTo])
 
+  const pctOfOffice = (stats, seconds) => {
+    const office = Number(stats?.officeSeconds || 0)
+    if (!office) return 0
+    const pct = (Number(seconds || 0) / office) * 100
+    return Math.min(100, Math.max(0, pct))
+  }
+
   const buildChartData = (stats) => {
     if (!stats) return BASE_CHART_DATA
 
-    const p = Number(stats.productivityPercentValue || 0)
-    const productive = Math.min(100, Math.max(0, p))
-    const unproductive = Math.max(0, 100 - productive)
+    const productive = pctOfOffice(stats, stats.productiveSeconds)
+    const unproductive = pctOfOffice(stats, stats.unproductiveSeconds)
+    const neutral = pctOfOffice(stats, stats.neutralSeconds)
+    const other = Math.max(0, 100 - productive - unproductive - neutral)
 
     return BASE_CHART_DATA.map((item) => {
       if (item.name === "Productive") return { ...item, value: productive }
       if (item.name === "Unproductive") return { ...item, value: unproductive }
-      return { ...item, value: 0 }
+      if (item.name === "Neutral") return { ...item, value: neutral }
+      return { ...item, value: other }
     })
   }
 
@@ -271,13 +280,21 @@ const ProductivityComp = () => {
     if (!stats) return BASE_LEGEND_ITEMS
 
     const productive = Number(stats.productivityPercentValue || 0)
-    const unproductive = Math.max(0, 100 - productive)
+    const unproductive = pctOfOffice(stats, stats.unproductiveSeconds)
+    const neutral = pctOfOffice(stats, stats.neutralSeconds)
+    const other = Math.max(
+      0,
+      100 -
+        pctOfOffice(stats, stats.productiveSeconds) -
+        unproductive -
+        neutral
+    )
 
     return [
       { ...BASE_LEGEND_ITEMS[0], value: `${productive.toFixed(2)}%` },
       { ...BASE_LEGEND_ITEMS[1], value: `${unproductive.toFixed(2)}%` },
-      BASE_LEGEND_ITEMS[2],
-      BASE_LEGEND_ITEMS[3],
+      { ...BASE_LEGEND_ITEMS[2], value: `${neutral.toFixed(2)}%` },
+      { ...BASE_LEGEND_ITEMS[3], value: `${other.toFixed(2)}%` },
     ]
   }
 
@@ -289,8 +306,12 @@ const ProductivityComp = () => {
       switch (idx) {
         case 0:
           return { ...item, value: stats.officeTime }
+        case 1:
+          return { ...item, value: stats.unproductiveTime }
         case 2:
           return { ...item, value: stats.activeTime }
+        case 3:
+          return { ...item, value: stats.neutralTime }
         case 4:
           return { ...item, value: stats.productiveTime }
         case 5:
