@@ -55,6 +55,11 @@ export default function AssignManagerDialog({
     [nonAdmins, roleId],
   );
 
+  const selectedRoleLabel = useMemo(
+    () => roles.find((r) => r.value === roleId)?.label || "",
+    [roles, roleId],
+  );
+
   const handleRoleChange = (next) => {
     setRoleId(next);
     setManagerId("");
@@ -95,7 +100,9 @@ export default function AssignManagerDialog({
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-[16px] font-bold text-gray-800">
-              {t("emp_assign_manager")}
+              {selectedRoleLabel
+                ? t("emp_assign_role_value", { role: selectedRoleLabel })
+                : t("emp_assign_manager")}
             </h3>
             <p className="text-[12px] text-gray-500 mt-0.5">
               {t("emp_assign_manager_to_count", { count: userIds.length })}
@@ -130,11 +137,17 @@ export default function AssignManagerDialog({
 
           <div className="space-y-2">
             <label className="text-[13px] font-semibold text-gray-700">
-              {t("emp_manager")}
+              {selectedRoleLabel || t("emp_manager")}
             </label>
             <Select value={managerId} onValueChange={setManagerId} disabled={!roleId || submitting}>
               <SelectTrigger className="h-10 rounded-xl border-gray-200 text-[13px]">
-                <SelectValue placeholder={!roleId ? t("emp_select_role_first") : t("emp_select_manager")} />
+                <SelectValue
+                  placeholder={
+                    !roleId
+                      ? t("emp_select_role_first")
+                      : t("emp_select_role_value", { role: selectedRoleLabel })
+                  }
+                />
               </SelectTrigger>
               <SelectContent className="rounded-xl max-h-60">
                 {managers.length === 0 ? (

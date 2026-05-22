@@ -917,6 +917,8 @@
   "emp_no_managers_for_role": "No users found for this role.",
   "emp_select_role_first": "Select a role first",
   "emp_select_manager": "Select a manager",
+  "emp_select_role_value": "Select a {{role}}",
+  "emp_assign_role_value": "Assign {{role}}",
   "emp_manager": "Manager",
   "emp_shift_assigned_success": "Shift assigned successfully.",
   "emp_shift_assign_failed": "Failed to assign shift.",
