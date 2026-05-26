@@ -59,6 +59,9 @@ import MobileTaskGeolocation from '../page/protected/admin/mobile-task-geolocati
 import ResellerDashboard from '../page/protected/admin/reseller-dashboard'
 import ResellerSettings  from '../page/protected/admin/reseller-settings'
 
+// Addon Features (super admin / operator org only)
+import AddonFeatures     from '../page/protected/admin/addon-features'
+
 import { AdminLayout } from '../page/protected/admin/Layout'
 import useAdminSession from '../sessions/adminSession'
 import { getSessionCookie } from '../lib/sessionCookie'
@@ -148,6 +151,9 @@ const AdminRoutes = () => {
       {/* ── Reseller ── */}
       <Route path="/admin/reseller/dashboard"          element={<AdminProtectedRoute><ResellerDashboard /></AdminProtectedRoute>} />
       <Route path="/admin/reseller/settings"           element={<AdminProtectedRoute><ResellerSettings /></AdminProtectedRoute>} />
+
+      {/* ── Addon Features (gated to super admin / operator org inside the page) ── */}
+      <Route path="/admin/addon-features"              element={<AdminProtectedRoute><AddonFeatures /></AdminProtectedRoute>} />
     </>
   )
 }

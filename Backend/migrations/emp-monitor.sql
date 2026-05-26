@@ -4232,6 +4232,53 @@ ALTER TABLE `user_role`
   ADD CONSTRAINT `fk_user_role_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_user_role_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_user_role_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+-- --------------------------------------------------------
+--
+-- Addon Features (platform-managed, toggled per-org by super admin
+-- or by users in the env-configured operator org).
+-- Idempotent: safe to re-run.
+-- --------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS `addon_features` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `feature_key` varchar(64) NOT NULL,
+  `name` varchar(128) NOT NULL,
+  `description` varchar(255) DEFAULT NULL,
+  `default_enabled` tinyint(1) NOT NULL DEFAULT 0,
+  `status` tinyint(1) NOT NULL DEFAULT 1,
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `feature_key_unique` (`feature_key`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `organization_addon_features` (
+  `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `organization_id` bigint(20) UNSIGNED NOT NULL,
+  `feature_id` int(11) UNSIGNED NOT NULL,
+  `enabled` tinyint(1) NOT NULL DEFAULT 0,
+  `updated_by_user_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `org_feature_unique` (`organization_id`, `feature_id`),
+  KEY `idx_org` (`organization_id`),
+  KEY `idx_feature` (`feature_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `addon_features` (`feature_key`, `name`, `description`, `default_enabled`, `sort_order`) VALUES
+  ('live_monitoring', 'Live Monitoring', 'Real-time agent screen view', 0, 10),
+  ('screencasting',   'Screencasting',   'Stream a user''s screen on demand', 0, 20),
+  ('dlp',             'DLP',             'Data loss prevention controls', 0, 30),
+  ('video_recording', 'Video Recording', 'Continuous video capture of sessions', 0, 40)
+ON DUPLICATE KEY UPDATE
+  `name`        = VALUES(`name`),
+  `description` = VALUES(`description`),
+  `sort_order`  = VALUES(`sort_order`);
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

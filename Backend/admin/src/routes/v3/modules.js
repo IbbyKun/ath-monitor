@@ -57,6 +57,7 @@ const InternalAnalyticsRoutes = require('./internalAnalytics/internalAnalytics.r
 const APIManagementRoutes = require("./apiManagement/apiManagement.routes");
 const AdminManagementRoutes = require("./admin/admin.routes");
 const EmailMonitoringRoutes = require('./email-monitoring/routes');
+const AddonFeaturesRoutes = require('./addonFeatures/addonFeatures.routes');
 class Modules {
     constructor() {
         this.modules = router;
@@ -136,6 +137,7 @@ class Modules {
         this.modules.use('/api-management', new APIManagementRoutes().getRouters());
         this.modules.use('/admin-management', new AdminManagementRoutes().getRouters());
         this.modules.use('/email-monitoring', new EmailMonitoringRoutes().getRoutes());
+        this.modules.use('/addon-features', new AddonFeaturesRoutes().getRouters());
         this.modules.get('*', function (req, res) {
             res.json({
                 code: 400,
