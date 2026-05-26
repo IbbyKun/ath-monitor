@@ -114,9 +114,6 @@ export const AdminLogin = () => {
         backgroundRepeat: "no-repeat",
       }}
     >
-      {/* Subtle tint overlay */}
-      <div className="absolute inset-0 bg-sky-50/20 pointer-events-none z-0" />
-
       {/* ── Header ────────────────────────────────────────────────────── */}
       <header className="animate-fade-down relative z-10 flex items-center justify-between px-8 py-5">
         <div className="flex items-center gap-3">
