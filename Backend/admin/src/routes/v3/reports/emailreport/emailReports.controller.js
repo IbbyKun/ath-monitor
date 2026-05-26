@@ -219,16 +219,16 @@ class EmailReportsController {
 
             if ((content.hrms_attendance == '1' || content.attendance == '1') && frequency != 5) return sendResponse(res, 400, null, reportMessage.find(x => x.id === "2")[language] || reportMessage.find(x => x.id === "2")["en"],);
 
-            if (!custom.date && frequency == 5) return sendResponse(res, 400, null, reportMessage.find(x => x.id === "2")[language] || reportMessage.find(x => x.id === "2")["en"],);
+            if (frequency == 5 && !custom?.date) return sendResponse(res, 400, null, reportMessage.find(x => x.id === "2")[language] || reportMessage.find(x => x.id === "2")["en"],);
 
-            if(frequency == 9 && !custom && !custom.time) return sendResponse(res, 400, null, reportMessage.find(x => x.id === "2")[language] || reportMessage.find(x => x.id === "2")["en"],);
-            
+            if (frequency == 9 && !custom?.time) return sendResponse(res, 400, null, reportMessage.find(x => x.id === "2")[language] || reportMessage.find(x => x.id === "2")["en"],);
+
             const [rep] = await EmailReportModel.report(`organization_id=${organization_id} AND id=${email_report_id}`);
             if (!rep) return sendResponse(res, 400, null, reportMessage.find(x => x.id === "7")[language] || reportMessage.find(x => x.id === "7")["en"], null);
 
-            let reportByName = await EmailReportModel.searchByname(name, organization_id);
+            const reportByName = name ? await EmailReportModel.searchByname(name, organization_id) : [];
 
-            if (reportByName?.length && reportByName[0].id !== +email_report_id)
+            if (reportByName?.length && reportByName.every(r => r.id !== +email_report_id))
                 return sendResponse(res, 400, null, reportMessage.find(x => x.id === "5")[language] || reportMessage.find(x => x.id === "5")["en"], null);
 
 
