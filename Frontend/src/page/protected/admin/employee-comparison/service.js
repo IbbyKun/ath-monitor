@@ -130,6 +130,18 @@ export const getEmployeeProductivity = async ({
             data?.production_data ||
             {};
 
+        // Per-date rows carry non_productive_duration / neutral_duration; the
+        // aggregated `production_data` block doesn't, so sum them here.
+        const daily = Array.isArray(data?.data) ? data.data : [];
+        const unproductiveSeconds = daily.reduce(
+            (s, d) => s + Number(d?.non_productive_duration || 0),
+            0
+        );
+        const neutralSeconds = daily.reduce(
+            (s, d) => s + Number(d?.neutral_duration || 0),
+            0
+        );
+
         const officeSeconds = Number(
             p.total_office_time ??
             p.office_time ??
@@ -151,6 +163,8 @@ export const getEmployeeProductivity = async ({
         const officeTime = formatSecondsToHMS(officeSeconds);
         const activeTime = formatSecondsToHMS(activeSeconds);
         const productiveTime = formatSecondsToHMS(productiveSeconds);
+        const unproductiveTime = formatSecondsToHMS(unproductiveSeconds);
+        const neutralTime = formatSecondsToHMS(neutralSeconds);
 
         const productivityPercent = Number(
             p.total_productivity ??
@@ -163,13 +177,15 @@ export const getEmployeeProductivity = async ({
                 officeTime,
                 activeTime,
                 productiveTime,
+                unproductiveTime,
+                neutralTime,
                 productivityPercent: `${productivityPercent.toFixed(2)}%`,
                 productivityPercentValue: productivityPercent,
                 officeSeconds,
                 activeSeconds,
                 productiveSeconds,
-                unproductiveSeconds: 0,
-                neutralSeconds: 0
+                unproductiveSeconds,
+                neutralSeconds
             },
             raw: data
         };
