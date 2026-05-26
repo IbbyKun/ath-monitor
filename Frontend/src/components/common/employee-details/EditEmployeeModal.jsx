@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useEmployeeForm, TIMEZONES } from "./useEmployeeForm";
 import EmployeeFormBody from "./EmployeeFormBody";
-import { getEmployeeDetails, editEmployee } from "@/page/protected/admin/employee-details/service";
+import { getEmployeeDetails, editEmployee, uploadEmployeeProfilePic } from "@/page/protected/admin/employee-details/service";
 
 export default function EditEmployeeModal({ open, onOpenChange, employeeId, locations = [], roles = [], shifts = [], onSuccess }) {
   const { t } = useTranslation();
@@ -18,6 +18,7 @@ export default function EditEmployeeModal({ open, onOpenChange, employeeId, loca
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [status, setStatus] = useState(null);
   const [originalUid, setOriginalUid] = useState("");
+  const [existingPhoto, setExistingPhoto] = useState("");
 
   const { form, set, reset, errors, setErrors, departments, deptLoading, validate, buildFormData } = useEmployeeForm(locations);
 
@@ -31,6 +32,7 @@ export default function EditEmployeeModal({ open, onOpenChange, employeeId, loca
       const d = res?.data;
       if (!d) return;
       setOriginalUid(d.uid ?? "");
+      setExistingPhoto(d.photo_path ?? "");
 
       const tzMatch = TIMEZONES.find((tz) => tz.value.startsWith(d.timezone ?? ""))?.value ?? "";
 
@@ -65,12 +67,19 @@ export default function EditEmployeeModal({ open, onOpenChange, employeeId, loca
     setStatus(null);
     const fd = buildFormData({ userId: employeeId, uid: originalUid });
     const res = await editEmployee(fd);
-    setSubmitting(false);
     if (res?.code === 200) {
+      // /user/user-profile-update is JSON-only and preserves the existing
+      // photo_path; the picked file has to go to the dedicated multer endpoint
+      // separately so the avatar actually updates.
+      if (form.profilePicture) {
+        await uploadEmployeeProfilePic(employeeId, form.profilePicture);
+      }
+      setSubmitting(false);
       setStatus({ type: "success", msg: t("emp_updated_successfully") });
       onSuccess?.();
       setTimeout(() => { onOpenChange(false); setStatus(null); }, 1200);
     } else {
+      setSubmitting(false);
       const errMsg = res?.error || res?.message || res?.msg || res?.data?.message || t("emp_update_failed");
       const errLower = (errMsg || "").toLowerCase();
       const fieldErrors = {};
@@ -95,7 +104,7 @@ export default function EditEmployeeModal({ open, onOpenChange, employeeId, loca
   };
 
   const handleClose = (open) => {
-    if (!open) { reset(); setStatus(null); }
+    if (!open) { reset(); setStatus(null); setExistingPhoto(""); }
     onOpenChange(open);
   };
 
@@ -140,6 +149,7 @@ export default function EditEmployeeModal({ open, onOpenChange, employeeId, loca
               showConfirmPassword={showConfirmPassword} setShowConfirmPassword={setShowConfirmPassword}
               locations={locations} roles={roles} shifts={shifts}
               departments={departments} deptLoading={deptLoading}
+              existingPhoto={existingPhoto}
               isEdit
             />
           </>
