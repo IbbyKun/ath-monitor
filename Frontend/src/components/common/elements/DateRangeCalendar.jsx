@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 
@@ -112,6 +112,10 @@ export default function DateRangeCalendar({
   // When false, the dropdown shows only the preset list. Clicking "Custom
   // Range" flips this on to reveal the calendar grid for manual selection.
   const [customMode, setCustomMode] = useState(false);
+  // Whether to anchor the dropdown to the right edge of the trigger. Chosen
+  // dynamically so a wide dropdown always opens toward the side with room,
+  // regardless of where the field sits on the page.
+  const [alignRight, setAlignRight] = useState(false);
   const ref = useRef(null);
 
   const max = maxDate || new Date();
@@ -125,6 +129,16 @@ export default function DateRangeCalendar({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // Pick the dropdown's anchor side based on available space: open toward the
+  // right (extend left) only when a left-aligned dropdown would overflow the
+  // viewport. Re-evaluated when the width changes (presets vs custom view).
+  useLayoutEffect(() => {
+    if (!open || !ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const width = customMode ? 700 : 160;
+    setAlignRight(rect.left + width + 16 > window.innerWidth);
+  }, [open, customMode]);
 
   // Ref to track if change is internal (user click) vs external (prop sync)
   const onChangeRef = useRef(onChange);
@@ -347,7 +361,7 @@ export default function DateRangeCalendar({
 
       {/* Dropdown */}
       {open && (
-        <div className={`absolute z-50 mt-1.5 bg-white rounded-2xl shadow-xl border border-slate-100 select-none flex max-w-[92vw] ${customMode ? "right-0 w-[700px]" : "left-0 w-[160px]"}`}>
+        <div className={`absolute z-50 mt-1.5 bg-white rounded-2xl shadow-xl border border-slate-100 select-none flex max-w-[92vw] ${alignRight ? "right-0" : "left-0"} ${customMode ? "w-[700px]" : "w-[160px]"}`}>
           {/* Quick-range presets */}
           <div className={`flex flex-col gap-0.5 p-2 w-[160px] shrink-0 ${customMode ? "border-r border-slate-100" : ""}`}>
             {presetDefs.map((p) => (
