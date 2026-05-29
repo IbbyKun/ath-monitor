@@ -358,7 +358,6 @@ const requestCSVDownload = async ({
     locationId,
     departmentId,
     selectedColumns,
-    searchKeyword,
 }) => {
     try {
         const payload = {
@@ -371,7 +370,6 @@ const requestCSVDownload = async ({
         if (locationId && locationId !== "all") payload.location_id = locationId;
         if (departmentId && departmentId !== "all") payload.department_ids = departmentId;
         if (selectedColumns?.length) payload.selected_columns = selectedColumns;
-        if (searchKeyword) payload.searchKeyword = searchKeyword;
 
         const response = await apiService.apiInstance.post(
             `/report/employee-excel`,
