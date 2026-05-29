@@ -4,6 +4,7 @@ import * as am5 from "@amcharts/amcharts5";
 import * as am5percent from "@amcharts/amcharts5/percent";
 import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 import CustomTab from "../../components/common/elements/CustomTab";
+import { getUsagePeriodLabel } from "@/lib/dateTimeUtils";
 
 const fallbackData = {
   today: [
@@ -33,7 +34,7 @@ export default function AppUsageChart({
   activeTab: activeTabProp,
   onTabChange,
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const resolvedTitle = title || t("topTenAppUsage");
   const chartRef = useRef(null);
   const rootRef = useRef(null);
@@ -159,7 +160,7 @@ export default function AppUsageChart({
           <div className="flex items-center gap-2 mt-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <p className="text-xs font-medium text-slate-400">
-              {t("fromDateRange")}
+              {getUsagePeriodLabel(activeTab, i18n.language)}
             </p>
           </div>
         </div>
