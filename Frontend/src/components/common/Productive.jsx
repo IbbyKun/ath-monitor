@@ -78,7 +78,19 @@ export default function TopProductiveEmployees({
 
         <div className="shrink-0">{filter}</div>
 
+        {/* ── Loading / Empty states ── */}
+        {loading ? (
+          <div className="py-6 text-center text-sm text-slate-500">
+            {t("loadingText")}
+          </div>
+        ) : !employees?.length ? (
+          <div className="py-6 text-center text-sm text-slate-500">
+            {t("noEmployeesForFilters")}
+          </div>
+        ) : null}
+
         {/* ── Table ── */}
+        {employees?.length > 0 && (
         <div className="flex-1 min-h-0 overflow-y-auto">
         <Table>
           <TableHeader>
@@ -95,19 +107,7 @@ export default function TopProductiveEmployees({
           </TableHeader>
 
           <TableBody>
-            {loading ? (
-              <TableRow className="border-b border-dashed border-slate-200 hover:bg-slate-50/60 transition-colors">
-                <TableCell colSpan={resolvedColumns.length} className="py-6 text-slate-500 text-sm">
-                  {t("loadingText")}
-                </TableCell>
-              </TableRow>
-            ) : !employees?.length ? (
-              <TableRow className="border-b border-dashed border-slate-200 hover:bg-slate-50/60 transition-colors">
-                <TableCell colSpan={resolvedColumns.length} className="py-6 text-slate-500 text-sm">
-                  {t("noEmployeesForFilters")}
-                </TableCell>
-              </TableRow>
-            ) : employees.map((emp, idx) => (
+            {employees.map((emp, idx) => (
               <TableRow
                 key={emp?.id ?? emp?.employee_id ?? `${emp?.name ?? "emp"}-${idx}`}
                 className="border-b border-dashed border-slate-200 hover:bg-slate-50/60 transition-colors"
@@ -167,6 +167,7 @@ export default function TopProductiveEmployees({
           </TableBody>
         </Table>
         </div>
+        )}
       </div>
     </>
   );

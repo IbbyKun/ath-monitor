@@ -122,6 +122,7 @@ export default function DepartmentPerformance({
 
         {/* List */}
         <div className="flex-1 w-full">
+          {rows.length > 0 && (
           <div className="flex items-center justify-between px-1 mb-2">
             <span className="text-slate-500 text-xs font-medium">
               {t("department")}
@@ -130,6 +131,7 @@ export default function DepartmentPerformance({
               {t("timeHoursLabel")}
             </span>
           </div>
+          )}
           {loading ? (
             <div className="text-center py-8 text-slate-400 text-sm">
               {t("loadingText")}

@@ -237,7 +237,8 @@ export default function LocationPerformance({
 
             {/* List */}
             <div className="flex-1 w-full min-w-0">
-              {/* Column headers */}
+              {/* Column headers — only when there is data */}
+              {rows.length > 0 && (
               <div className="grid grid-cols-[1fr_auto] items-center gap-3 px-1 mb-2">
                 <span className="text-slate-500 text-xs font-medium truncate">
                   {t("location")}
@@ -246,6 +247,7 @@ export default function LocationPerformance({
                   {t("timePercentage")}
                 </span>
               </div>
+              )}
 
               {loading ? (
                 <div className="text-center py-8 text-slate-400 text-sm">
