@@ -241,12 +241,13 @@ const getGpsEmployees = async (status = "") => {
 };
 
 // POST /mobile/geo-location/get-geo-log
+// Backend wraps the points: { code, data: { geoLog: [...], timezone, status, ... } }
 const getGeoLog = async ({ employeeId, startDate, endDate }) => {
     try {
         const { data } = await apiService.apiInstance.post("/mobile/geo-location/get-geo-log", {
             employee_id: employeeId, start_date: startDate, end_date: endDate,
         });
-        return data?.code === 200 ? (data.data || []) : [];
+        return data?.code === 200 ? (data.data?.geoLog || []) : [];
     } catch { return []; }
 };
 

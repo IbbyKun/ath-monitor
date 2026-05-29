@@ -13,6 +13,19 @@ const getStatusOptions = (t) => [
     { value: "disabled", label: t("gps.disabled") },
 ];
 
+// Backend get-total-task-time returns total worked time as a number of seconds.
+const formatDuration = (totalSeconds) => {
+    const s = Number(totalSeconds) || 0;
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    const parts = [];
+    if (h) parts.push(`${h}h`);
+    if (m) parts.push(`${m}m`);
+    parts.push(`${sec}s`);
+    return parts.join(" ");
+};
+
 const EmpMobileTaskGeolocation = () => {
     const { t } = useTranslation();
     const STATUS_OPTIONS = getStatusOptions(t);
@@ -122,7 +135,7 @@ const EmpMobileTaskGeolocation = () => {
                                         <p className="font-medium text-slate-700">
                                             Lat: {point.latitude ?? point.lat}, Lng: {point.longitude ?? point.lng}
                                         </p>
-                                        <p className="text-slate-400 mt-0.5">{point.timestamp || point.created_at || "-"}</p>
+                                        <p className="text-slate-400 mt-0.5">{point.time || point.timestamp || point.created_at || "-"}</p>
                                         {point.address && <p className="text-slate-500 mt-0.5">{point.address}</p>}
                                     </div>
                                 </div>
@@ -136,7 +149,7 @@ const EmpMobileTaskGeolocation = () => {
             {taskTime && (
                 <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
                     <p className="text-sm font-semibold text-slate-700 mb-1">{t("gps.taskTimeSummary")}</p>
-                    <p className="text-xs text-slate-500">{t("gps.totalTaskTime")}: {taskTime.total_time || taskTime.duration || "-"}</p>
+                    <p className="text-xs text-slate-500">{t("gps.totalTaskTime")}: {formatDuration(taskTime)}</p>
                 </div>
             )}
         </div>
