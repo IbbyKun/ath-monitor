@@ -1,21 +1,18 @@
 import { create } from "zustand";
 import {
     getClientStats,
-    getAllEmployees,
     registerClient as registerClientApi,
     updateClient as updateClientApi,
     removeClient as removeClientApi,
     toggleStorage as toggleStorageApi,
     getResellerLicenses,
     clientLogin as clientLoginApi,
-    assignEmployees as assignEmployeesApi,
     getAssignedEmployees,
     deleteAssignedEmployee as deleteAssignedEmployeeApi,
 } from "./service";
 
 export const useResellerStore = create((set, get) => ({
     clients: [],
-    employees: [],
     assignedEmployees: [],
     licenses: { leftOverLicenses: 0, expiryDate: "" },
     loading: false,
@@ -26,7 +23,6 @@ export const useResellerStore = create((set, get) => ({
     registerModalOpen: false,
     editModalOpen: false,
     editingClient: null,
-    assignModalOpen: false,
     viewAssignedModalOpen: false,
     viewAssignedOrgId: null,
 
@@ -37,11 +33,8 @@ export const useResellerStore = create((set, get) => ({
     loadDashboard: async () => {
         try {
             set({ loading: true, error: null });
-            const [clients, employees] = await Promise.all([
-                getClientStats(),
-                getAllEmployees(),
-            ]);
-            set({ clients, employees, loading: false });
+            const clients = await getClientStats();
+            set({ clients, loading: false });
         } catch {
             set({ loading: false, error: "Failed to load dashboard" });
         }
@@ -131,26 +124,10 @@ export const useResellerStore = create((set, get) => ({
         }
     },
 
-    // Assign employee
-    assignEmployees: async (resellerOrgId, employeeIds) => {
-        const result = await assignEmployeesApi(resellerOrgId, employeeIds);
-        if (result.success) {
-            set({ successMsg: result.message || "Employees assigned successfully", assignModalOpen: false });
-        } else {
-            set({ error: result.message });
-        }
-        return result.success;
-    },
-
     fetchAssignedEmployees: async (orgId) => {
         set({ viewAssignedOrgId: orgId, assignedEmployees: [] });
         const list = await getAssignedEmployees(orgId);
         set({ assignedEmployees: list, viewAssignedModalOpen: true });
-    },
-
-    getPreAssignedIds: async (orgId) => {
-        const list = await getAssignedEmployees(orgId);
-        return list.map((e) => e.id);
     },
 
     deleteAssignedEmployee: async (employeeId) => {
