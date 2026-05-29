@@ -8,7 +8,6 @@ import EmpResellerDashboardLogo from "@/assets/reseller/reseller-dashboard.svg";
 import { useResellerStore } from "@/page/protected/admin/reseller-dashboard/resellerStore";
 import RegisterClientModal from "./RegisterClientModal";
 import EditClientModal from "./EditClientModal";
-import AssignEmployeeModal from "./AssignEmployeeModal";
 import ViewAssignedModal from "./ViewAssignedModal";
 
 const EmpResellerDashboard = () => {
@@ -123,7 +122,6 @@ const EmpResellerDashboard = () => {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-xs" onClick={() => setModal("registerModalOpen", true)}>{t("reseller.addClient")}</Button>
-                    <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-xs" onClick={() => setModal("assignModalOpen", true)}>{t("reseller.assignEmployee")}</Button>
                 </div>
             </div>
 
@@ -186,7 +184,6 @@ const EmpResellerDashboard = () => {
             {/* Modals */}
             <RegisterClientModal />
             <EditClientModal />
-            <AssignEmployeeModal />
             <ViewAssignedModal />
         </div>
     );

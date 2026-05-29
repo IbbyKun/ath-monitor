@@ -29,28 +29,6 @@ const getClientStats = async () => {
     }
 };
 
-// Controller: getUsersAttendance()
-// Backend: GET /external/all-employee?skip=0&limit=9999
-const getAllEmployees = async () => {
-    try {
-        const { data } = await apiService.apiInstance.get("/external/all-employee", {
-            params: { skip: 0, limit: 9999 },
-        });
-        if (data?.code === 200 && Array.isArray(data.data?.employeeDetails)) {
-            return data.data.employeeDetails.map((e) => ({
-                id: e.employee_id,
-                name: e.employee_name || `${e.first_name || ""} ${e.last_name || ""}`.trim(),
-                email: e.email || "-",
-                empCode: e.emp_code || "-",
-                department: e.department_name || "-",
-            }));
-        }
-        return [];
-    } catch {
-        return [];
-    }
-};
-
 // Controller: registerClientDetails()
 // Backend: POST /auth/register-client
 const registerClient = async (clientData) => {
@@ -130,21 +108,6 @@ const clientLogin = async (organizationId) => {
     }
 };
 
-// Controller: assignEmployeeReseller()
-// Backend: POST /external/assign-employee-reseller
-const assignEmployees = async (resellerOrgId, employeeIds) => {
-    try {
-        const { data } = await apiService.apiInstance.post("/external/assign-employee-reseller", {
-            reseller_organization_id: resellerOrgId,
-            employee_id: employeeIds,
-        });
-        const resp = data?.data || data;
-        return { success: resp?.code === 200, message: resp?.message || data?.message || "" };
-    } catch {
-        return { success: false, message: "Failed to assign employees" };
-    }
-};
-
 // Controller: assignEmployeeData()
 // Backend: GET /external/get-assign-employee-reseller?reseller_organization_id=
 const getAssignedEmployees = async (resellerOrgId) => {
@@ -206,14 +169,12 @@ const saveResellerSettings = async (settingsData) => {
 
 export {
     getClientStats,
-    getAllEmployees,
     registerClient,
     updateClient,
     removeClient,
     toggleStorage,
     getResellerLicenses,
     clientLogin,
-    assignEmployees,
     getAssignedEmployees,
     deleteAssignedEmployee,
     getResellerSettings,
