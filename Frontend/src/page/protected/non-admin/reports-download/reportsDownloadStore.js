@@ -44,7 +44,6 @@ export const useNonAdminReportsDownloadStore = create((set, get) => ({
         location: "all",
         department: "all",
         downloadOption: "1",
-        searchWebApp: "",
         startDate: defaultStart,
         endDate: defaultEnd,
         search: "",
@@ -325,7 +324,6 @@ export const useNonAdminReportsDownloadStore = create((set, get) => ({
                 locationId: filters.location,
                 departmentId: filters.department,
                 selectedColumns,
-                searchKeyword: filters.searchWebApp || undefined,
             });
 
             if (res.code === 200) {

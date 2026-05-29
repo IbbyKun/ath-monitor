@@ -475,27 +475,7 @@ const EmpReportsDownload = ({ useStore = _defaultStore }) => {
       </div>
 
       {/* Filters Row 2 */}
-      <div className="flex flex-wrap items-end justify-between gap-4 mb-5">
-        <div className="w-full sm:w-auto sm:min-w-[280px]">
-          <label className="flex items-center gap-1 text-sm font-medium text-slate-700 mb-1.5">
-            {t("rd_search_web_app")}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="w-3.5 h-3.5 text-blue-500 cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={4}>
-                {t("reportsDownload.searchWebAppTooltip")}
-              </TooltipContent>
-            </Tooltip>
-          </label>
-          <Input
-            placeholder={t("reportsDownload.searchVisitedPlaceholder")}
-            value={filters.searchWebApp}
-            onChange={(e) => setFilter("searchWebApp", e.target.value)}
-            className="h-10 rounded-lg border-slate-200 text-sm"
-          />
-        </div>
-
+      <div className="flex flex-wrap items-end justify-end gap-4 mb-5">
         <div className="flex items-center gap-4 flex-wrap">
           {/* PDF Note & PDF Download Button — temporarily disabled */}
           {/*
