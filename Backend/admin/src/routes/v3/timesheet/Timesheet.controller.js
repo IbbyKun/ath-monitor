@@ -410,18 +410,6 @@ class TimeSheetController {
                 }
             }
             shift_id = Number(shift_id);
-            if (!Number.isNaN(shift_id) && shift_id !== -1) {
-                let empTempIds = [];
-                if(employee_ids.length) empTempIds = [...employee_ids];
-                if(~~employee_id) empTempIds.push(employee_id);
-                employee_ids = _.pluck(
-                    await TimeSheetModel.getEmployeeByShift({ shift_id, organization_id, employee_ids: empTempIds }),
-                    "id"
-                )
-                if (employee_ids.length === 0) {
-                    return sendResponse(res, 400, null, timesheetMessages.find(x => x.id === "1")[language] || timesheetMessages.find(x => x.id === "1")["en"], null);
-                }
-            }
             let column;
             let order;
             if (sortOrder === 'D') {
