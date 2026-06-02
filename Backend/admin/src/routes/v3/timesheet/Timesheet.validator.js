@@ -3,8 +3,10 @@ const Common = require('../../../utils/helpers/Common')
 
 class TimeSheetValidator {
     getTimesheet() {
-        // Accept '', null, undefined, or 'all' for scope IDs — coerce to 0 (= "all" on backend)
-        const scopeId = Joi.number().integer().min(0).empty(Joi.valid('', null, 'all')).default(0);
+        // Accept '', null, undefined, or 'all' for scope IDs — coerce to 0 (= "all" on backend).
+        // unsafe() lets Joi accept 64-bit bigint employee IDs without precision loss / rejection
+        // (employee_id is a bigint(20) UNSIGNED column; ids can exceed 2^31).
+        const scopeId = Joi.number().integer().min(0).unsafe().empty(Joi.valid('', null, 'all')).default(0);
 
         return Joi.object().keys({
             location_id: scopeId,
@@ -16,7 +18,7 @@ class TimeSheetValidator {
             employee_avg: Joi.boolean().allow(true, false).default(false),
             avg: Joi.boolean().allow(true, false).default(false),
             shift_id: Joi.number().optional().default(-1)
-        });
+        }).unknown(true); // tolerate stray/extra query params instead of failing the whole request
     }
 
     getTimesheetValidation() {

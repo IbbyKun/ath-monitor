@@ -199,6 +199,22 @@ class TimeSheetController {
     async getTimesheet(req, res, next) {
         try {
             if (req.decoded.role === 'Employee') {
+                // An Employee may only ever see their OWN timesheet. We scope the
+                // query to their employee_id from the session. If the session has
+                // no employee_id (null/0/undefined), DO NOT fall through — leaving
+                // it null makes the validator coerce it to 0 ("all employees"),
+                // which would leak the entire organization's timesheet to a single
+                // employee. Reject with a clear error instead.
+                if (!req.decoded.employee_id) {
+                    const lang = req.decoded.language;
+                    return sendResponse(
+                        res, 400, null,
+                        (timesheetMessages.find(x => x.id === "1") || {})[lang] ||
+                        (timesheetMessages.find(x => x.id === "1") || {})["en"] ||
+                        'Your account is not linked to an employee record. Please re-login or contact your administrator.',
+                        null
+                    );
+                }
                 req.query.employee_id = req.decoded.employee_id;
             }
             // Only treat the caller as a manager when their role actually
@@ -209,9 +225,11 @@ class TimeSheetController {
             const isManagerRole = req.decoded.role === 'Manager';
             const { organization_id, role_id, productive_hours, language } = req.decoded;
             const manager_id = isManagerRole ? (req.decoded.employee_id || null) : null;
+
             let {
                 location_id, department_id, employee_id, start_date, end_date, absent, employee_avg, avg, shift_id
             } = await TimeSheetValidator.getTimesheet().validateAsync(req.query);
+
             const startDateStr = moment(start_date).format('YYYY-MM-DD');
             const endDateStr = moment(end_date).format('YYYY-MM-DD');
             actionsTracker(
