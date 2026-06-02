@@ -1,6 +1,5 @@
-import { AxiosResponse } from 'axios';
-import ZohoWorkDrive from 'zoho-wd-pools';
 import { createReadStream } from 'fs';
+import ZohoWorkDrive from './zoho-client';
 import { StorageUtilInterface } from '../interfaces/storage-util.interface';
 import { IFolderIds } from '../interfaces/storage-folders-cache.interface';
 import { UploadDto } from '../dto/upload.dto';
@@ -9,27 +8,46 @@ const Api = new ZohoWorkDrive();
 
 export class ZohoWorkdriveUtils implements StorageUtilInterface {
   private teamId: string;
+  private privateSpaceId: string | null = null;
   private emailFolderId: string;
   private dayFolderIds: IFolderIds = {};
   private hourFolderIds: IFolderIds = {};
 
-  async initConnection(storage: any): Promise<void> {
+  setRedisClient(redisClient: any): void {
+    if (Api && !Api['_redis']) {
+      Api.setRedis({
+        get: (key: string) => redisClient.get(key),
+        set: (key: string, value: string, ttl: number) => redisClient.set(key, value, 'EX', ttl),
+        del: (key: string) => redisClient.del(key),
+      });
+    }
+  }
+
+  async initConnection(storage: any, organization_id?: number): Promise<void> {
     const {
       zoho_refresh_token,
       domain,
       zoho_client_id,
       zoho_client_secret,
       team_id,
+      private_space_id,
     } = storage;
     this.teamId = team_id;
-    const haveConnect = Api.checkCreds(this.teamId);
+    this.privateSpaceId = private_space_id || null;
+    const orgId = organization_id ? String(organization_id) : undefined;
+    const haveConnect = await Api.checkCreds(this.teamId, orgId);
     if (!haveConnect) {
       await Api.addConection(this.teamId, {
         clientId: zoho_client_id,
         clientSecret: zoho_client_secret,
         refreshToken: zoho_refresh_token,
         domain,
-      });
+        privateSpaceId: private_space_id,
+      } as any, orgId);
+    }
+    if (!this.privateSpaceId) {
+      const cached = Api.getPrivateSpaceId(this.teamId);
+      if (cached) this.privateSpaceId = cached;
     }
   }
 
@@ -40,38 +58,43 @@ export class ZohoWorkdriveUtils implements StorageUtilInterface {
   
   async uploadFile(file: UploadDto): Promise<void> {
     const day: string = file.originalname.slice(3, 13);
-    const hour: string = file.originalname.slice(0, 2);
 
-    let parentId: string = await this.getDateFolderId(day);
-    if(file.fieldname === 'screenshots') {
-      parentId = await this.getHourFolderId(hour, parentId);
-    } 
+    const parentId: string = await this.getDateFolderId(day);
 
     await this.existOrCreateShare(parentId);
     await this.uploadFileToDrive(file, parentId);
   }
 
   async getWsId(teamFolderName: string): Promise<string> {
-    let wsId = Api.getFromCashe({ key: teamFolderName, pool: this.teamId });
+    let wsId = await Api.getFromCashe({ key: teamFolderName, pool: this.teamId });
 
     if (!wsId) {
-      const data = await Api.ws.all(this.teamId, {
-        teamId: this.teamId,
-      });
+      let items: any[];
+      if (this.privateSpaceId) {
+        items = (await Api.files.list(this.teamId, { folderId: this.privateSpaceId })) || [];
+      } else {
+        items = (await Api.ws.all(this.teamId, { teamId: this.teamId })) || [];
+      }
 
-      let empMonitor = data.find(
+      let empMonitor = items.find(
         wspace => wspace?.attributes?.name === teamFolderName,
       );
       if (!empMonitor) empMonitor = await this.createTeamFolder(teamFolderName);
 
       wsId = empMonitor.id;
-      Api.setToCashe({ key: teamFolderName, pool: this.teamId, data: wsId });
+      await Api.setToCashe({ key: teamFolderName, pool: this.teamId, data: wsId });
     }
 
     return wsId;
   }
 
-  createTeamFolder(name: string): Promise<AxiosResponse> {
+  createTeamFolder(name: string): Promise<any> {
+    if (this.privateSpaceId) {
+      return Api.folder.create(this.teamId, {
+        parentId: this.privateSpaceId,
+        name,
+      });
+    }
     return Api.ws.create(this.teamId, {
       name,
       teamId: this.teamId,
@@ -118,7 +141,7 @@ export class ZohoWorkdriveUtils implements StorageUtilInterface {
     return folder.id;
   }
 
-  async createFolder(parentId: string, name: string): Promise<AxiosResponse> {
+  async createFolder(parentId: string, name: string): Promise<any> {
     return Api.folder.create(this.teamId, { parentId, name });
   }
 

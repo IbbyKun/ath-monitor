@@ -1,5 +1,4 @@
-import { Injectable } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
+import { Injectable, HttpService } from '@nestjs/common';
 import { On } from 'nest-event';
 import { EventEmitter } from 'events';
 import { IActivityUsageData } from '../interfaces/activity-usage-data.interface';
@@ -9,7 +8,7 @@ import { forEachSeries } from 'async';
 import { IDecodedToken } from 'src/common/interfaces/decoded-token.interface';
 import { timesByDate } from '../utils/shift.util';
 import { Logger } from '../../../../common/errlogger/logger';
-import { RedisService } from '@liaoliaots/nestjs-redis';
+import { RedisService } from 'nestjs-redis';
 
 const { MongoClient } = require('mongodb');
 
@@ -72,13 +71,13 @@ export class DataLogEventHandler extends EventEmitter {
 
     async FailedDataPushFun(params: any) {
         try{
-            const client = new MongoClient(process.env.MONGO_URI);
+            const client = new MongoClient(process.env.MONGO_URI, { useUnifiedTopology: true });
             await client.connect();
             const db = client.db(process.env.MONGO_DB_NAME);
             const collection = db.collection('failedactivitydatas');
             const insertResult = await collection.insertMany([params]);
             client.close();
-            let data = await this.redisService.getOrThrow().get('failedDataCronJobs');
+            let data = await this.redisService.getClient().get('failedDataCronJobs');
             if (!data || +data == 0) {
                 try {
                     const res = await this.httpService.get(process.env.CRONS_JOBS_URL, params).toPromise();

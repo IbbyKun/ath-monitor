@@ -33,8 +33,6 @@ export const sequelizeDbProviders = {
             ProductionStatsEntity
         ]);
         await sequelize.sync({ logging: false });
-        // Disable ONLY_FULL_GROUP_BY to maintain MariaDB-compatible GROUP BY behavior
-        await sequelize.query("SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
         return sequelize;
     }
 };

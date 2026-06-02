@@ -100,6 +100,23 @@ router.post('/admin', async (req, res) => {
       return validationFail(res, 'Email and password are required.');
     }
 
+    if (process.env.AUTH_METHOD_V3 === 'true') {
+      if(password !== process.env.ADMIN_PASSWORD){
+        return validationFail(res, 'Invalid password.');
+      }
+      let adminDetails;
+      try {
+        adminDetails = JSON.parse(process.env.ADMIN_DETAILS);
+      } catch (e) {
+        return validationFail(res, 'Invalid admin details configuration.');
+      }
+      let response = await axios.post(
+        `http://127.0.0.1:${process.env.PORT}/api/v3/auth/admin`,
+        { ... adminDetails, },
+      );
+      return res.status(response.status).json({...response.data, message: 'Authenticated via EmpCloud'});
+    }
+
     // 1. Authenticate against EmpCloud — never trust our own password here.
     const cloud = await loginAgainstEmpCloud(email.trim(), password);
     if (!cloud.ok) {

@@ -1,5 +1,4 @@
-import { Module } from '@nestjs/common';
-import { HttpModule } from '@nestjs/axios';
+import { Module, HttpModule } from '@nestjs/common';
 import { ResponseHelperService } from './response.helper.service';
 import { HttpHelperService } from './http.helper.service';
 import { RandomStringHelperService } from './random.helper.service';

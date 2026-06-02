@@ -1,3 +1,38 @@
+// Load this module's sibling .env (Backend/config/.env) so the Config class
+// below actually picks up its values. The path is resolved relative to THIS
+// file, so it works no matter which service's cwd `node` was started from.
+//
+// We parse the file by hand instead of using `dotenv` because this directory
+// has no node_modules of its own — `require('dotenv')` is not reliably
+// resolvable from here across the different services that load this config.
+// Values already present in process.env (e.g. set by the host service's own
+// dotenv.config()) are kept authoritative; this only fills in the missing ones.
+(function loadConfigEnv() {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const envPath = path.join(__dirname, '.env');
+        if (!fs.existsSync(envPath)) return;
+        const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('#')) continue; // skip blanks/comments
+            const eq = trimmed.indexOf('=');
+            if (eq === -1) continue;
+            const key = trimmed.slice(0, eq).trim();
+            if (!key || process.env[key] !== undefined) continue; // don't override existing
+            let value = trimmed.slice(eq + 1).trim();
+            // strip surrounding single/double quotes if present
+            if (value.length >= 2 && ((value[0] === '"' && value.endsWith('"')) || (value[0] === "'" && value.endsWith("'")))) {
+                value = value.slice(1, -1);
+            }
+            process.env[key] = value;
+        }
+    } catch (e) {
+        if (process.env.IS_DEBUGGING) console.warn('[config] could not load config/.env:', e.message);
+    }
+})();
+
 class Config {
     constructor() {
         // Helper to parse string env var

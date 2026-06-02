@@ -74,19 +74,24 @@ export const AdminLogin = () => {
       const result = await adminLogin({ email, password });
 
       // Handle service-level error (caught in service.js)
-      if (result.error && !result.success) {
+      if (result?.error && !result?.success) {
         setError(result.error);
         return;
       }
 
-      // Check outer response success/code
-      if (!result?.success || result.code !== 200 || !result?.data) {
-        setError(result.message || t("auth_login_failed"));
+      // A successful login is identified by HTTP-level code 200 plus a token in
+      // `data`. The `success` flag is only present on the v1/EmpCloud response
+      // shape; the v3 proxy response omits it (and sets message:'token'), so we
+      // must NOT require `success` here — otherwise a valid login is rejected
+      // and the literal "token" message is shown in the error banner.
+      const isSuccess = result?.code === 200 && !!result?.data;
+      if (!isSuccess) {
+        setError(result?.message || t("auth_login_failed"));
         return;
       }
 
-      // Check inner data-level error
-      if (result.data.error) {
+      // Inner data-level error (only when `data` is an object, not the token string)
+      if (result.data && typeof result.data === "object" && result.data.error) {
         setError(result.data.error);
         return;
       }
