@@ -9,7 +9,6 @@ import NotificationBell from "@/components/common/NotificationBell";
 import { useTranslation } from "react-i18next";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import userData from "@/data/user.json";
-import hrms from "@/assets/hrms.png";
 import useAdminSession from "@/sessions/adminSession";
 import {
   DropdownMenu,
@@ -87,16 +86,6 @@ export default function TopHeader() {
         </div>
 
         <BackToCloud />
-        {/* HRMS Badge */}
-        <a
-          href="https://app.empcloud.com/"
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-1.5 rounded-full border border-slate-200 px-4 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-slate-50 transition-colors"
-        >
-          <img src={hrms} alt="" className="h-6 w-6" />
-          <span className="hidden lg:inline"> HRMS</span>
-        </a>
 
         {/* Help */}
         <a
