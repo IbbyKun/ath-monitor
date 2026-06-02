@@ -224,7 +224,7 @@ export const bulkRegisterEmployees = async (file) => {
   try {
     const fd = new FormData();
     fd.append("file", file);
-    const { data } = await apiService.apiInstance.post("/user/upload-bulk-registration", fd, {
+    const { data } = await apiService.apiInstance.post("/user/user-register-bulk", fd, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return data ?? null;
