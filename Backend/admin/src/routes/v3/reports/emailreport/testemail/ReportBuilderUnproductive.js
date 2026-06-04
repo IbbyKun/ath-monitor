@@ -1,7 +1,7 @@
 const moment = require("moment");
 const _ = require("underscore");
 const { createObjectCsvWriter } = require('csv-writer');
-const rimraf = require('rimraf');
+const { rimraf } = require('rimraf');
 const Temp = require('temp');
 
 
@@ -24,11 +24,8 @@ class UnReportBuilder {
     async finalize() {
         try {
             if (!('dirName' in this)) return Promise.resolve();
-            return new Promise((resolve) => {
-                rimraf(this.dirName, {}, () => {
-                    resolve();
-                });
-            });
+            await rimraf(this.dirName);
+            return Promise.resolve();
         } catch (err) {
             console.log('-------csv1--------', err);
             return Promise.reject(err);

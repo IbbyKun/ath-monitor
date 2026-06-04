@@ -1,6 +1,6 @@
 const temp = require('temp');
 const uniqid = require('uniqid');
-const rimraf = require('rimraf');
+const { rimraf } = require('rimraf');
 const moment = require('moment-timezone');
 const _ = require("underscore");
 const archiver = require('archiver');
@@ -2149,14 +2149,11 @@ class ReportBuilder {
     async finalize() {
         try {
             if (!('dirName' in this)) return Promise.resolve();
-            return new Promise(async (resolve) => {
-                if(this.applicationHistoryHTMLPATH) fs.unlink(this.applicationHistoryHTMLPATH, err => resolve());
-                if(this.browserHistoryHTMLPATH) fs.unlink(this.browserHistoryHTMLPATH, err => resolve());
-                if(this.combinedAppWebUsageReportPDFPath) fs.unlink(this.combinedAppWebUsageReportPDFPath, err => resolve());
-                rimraf(this.dirName, {}, () => {
-                    resolve();
-                });
-            });
+            if (this.applicationHistoryHTMLPATH) fs.unlink(this.applicationHistoryHTMLPATH, () => {});
+            if (this.browserHistoryHTMLPATH) fs.unlink(this.browserHistoryHTMLPATH, () => {});
+            if (this.combinedAppWebUsageReportPDFPath) fs.unlink(this.combinedAppWebUsageReportPDFPath, () => {});
+            await rimraf(this.dirName);
+            return Promise.resolve();
         } catch (err) {
             Logger.error(`-V3---email-----${err.message}---${err}'---${__filename}----`);
             return Promise.reject(err);
