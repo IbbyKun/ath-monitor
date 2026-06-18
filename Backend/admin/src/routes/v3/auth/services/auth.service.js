@@ -1077,7 +1077,14 @@ class AuthService {
           photo_path: existingEmployee.photo_path,
           address: existingEmployee.address,
           role_id: existingEmployee.role_id,
-          role: existingEmployee.role,
+          // When this SSO user resolves to an admin (custom EmpCloud role with
+          // full monitor:* perms over a base "employee" role), expose the
+          // EFFECTIVE role 'Admin' — not the raw DB role 'Employee'. Otherwise
+          // every controller guard `if (req.decoded.role === 'Employee')` would
+          // mis-fire and clobber the requested employee_id with the admin's
+          // (null) one, breaking ~all read APIs. This mirrors how the dedicated
+          // admin login paths always store role: 'Admin'.
+          role: isAdminRole ? 'Admin' : existingEmployee.role,
           status: existingEmployee.status,
           timezone: existingEmployee.timezone,
           is_manager,
