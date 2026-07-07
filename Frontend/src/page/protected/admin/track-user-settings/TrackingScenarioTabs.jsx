@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Briefcase, MapPin, Search } from "lucide-react";
+import { Briefcase, MapPin, Search, Trash2 } from "lucide-react";
 
 /* ── Day colors (matching reference: cyan for weekdays, rose for Saturday, red for Sunday) ── */
 const DAYS = [
@@ -57,30 +57,56 @@ export function UnlimitedTab() {
 }
 
 /* ── Fixed Tab ── */
-export function FixedTab() {
+export function FixedTab({ value = {}, onChange }) {
   const { t } = useTranslation();
-  const [workingDays, setWorkingDays] = useState(
-    DAYS.reduce((acc, d) => {
-      acc[d.name] = true;
-      return acc;
-    }, {})
-  );
+  const [applyError, setApplyError] = useState("");
 
-  const [shifts, setShifts] = useState(DAYS.map((d) => ({ day: d.name, start: "", end: "" })));
+  // A day is "on" if it has an entry in the saved `fixed` object; its times come
+  // from fixed[day].time. Backend/write shape: { <Day>: { time: { start, end } } }.
+  const fixed = value && typeof value === "object" ? value : {};
+  const workingDays = DAYS.reduce((acc, d) => {
+    acc[d.name] = d.name in fixed;
+    return acc;
+  }, {});
+  const shifts = DAYS.map((d) => ({
+    day: d.name,
+    start: fixed[d.name]?.time?.start ?? "",
+    end: fixed[d.name]?.time?.end ?? "",
+  }));
 
-  const updateShift = (idx, field, val) =>
-    setShifts((p) => p.map((s, i) => (i === idx ? { ...s, [field]: val } : s)));
+  // Rebuild the `fixed` object from the given days/times and push it up so the
+  // schedule actually persists on Save.
+  const emit = (nextDays, nextShifts) => {
+    const out = {};
+    nextShifts.forEach((s) => {
+      if (nextDays[s.day]) out[s.day] = { time: { start: s.start, end: s.end } };
+    });
+    onChange?.(out);
+  };
 
-  const toggleDay = (day) => setWorkingDays((p) => ({ ...p, [day]: !p[day] }));
+  const updateShift = (idx, field, val) => {
+    setApplyError("");
+    const nextShifts = shifts.map((s, i) => (i === idx ? { ...s, [field]: val } : s));
+    emit(workingDays, nextShifts);
+  };
+
+  const toggleDay = (day) => {
+    setApplyError("");
+    emit({ ...workingDays, [day]: !workingDays[day] }, shifts);
+  };
 
   const applyToAll = () => {
-    const firstIdx = shifts.findIndex((s) => workingDays[s.day]);
-    if (firstIdx < 0) return;
-    const first = shifts[firstIdx];
-
-    setShifts((p) =>
-      p.map((s) => (workingDays[s.day] ? { ...s, start: first.start, end: first.end } : s))
+    // Need a selected day that already has both start and end set to copy from.
+    const source = shifts.find((s) => workingDays[s.day] && s.start && s.end);
+    if (!source) {
+      setApplyError(t("track_fixed_apply_hint"));
+      return;
+    }
+    setApplyError("");
+    const nextShifts = shifts.map((s) =>
+      workingDays[s.day] ? { ...s, start: source.start, end: source.end } : s
     );
+    emit(workingDays, nextShifts);
   };
 
   return (
@@ -88,6 +114,7 @@ export function FixedTab() {
       <div>
         <h4 className="text-base font-bold text-gray-800">{t("track_select_working_days_timings")}</h4>
         <p className="text-xs text-gray-400 mt-0.5">{t("track_fixed_hours_desc")}</p>
+        {applyError && <p className="text-sm text-red-500 mt-2">{applyError}</p>}
       </div>
 
       <div className="bg-[#F8FAFC] border border-gray-100 rounded-3xl p-6">
@@ -217,20 +244,82 @@ export function ClientBasedTab() {
 }
 
 /* ── Network Based Tab ── */
-export function NetworkBasedTab() {
+export function NetworkBasedTab({ value = [], onChange }) {
   const { t } = useTranslation();
   const [networkName, setNetworkName] = useState("");
   const [ipAddress, setIpAddress] = useState("");
+  const [officeNetwork, setOfficeNetwork] = useState(true);
+  const [error, setError] = useState("");
+
+  const networks = Array.isArray(value) ? value : [];
+
+  const resetForm = () => {
+    setNetworkName("");
+    setIpAddress("");
+    setOfficeNetwork(true);
+    setError("");
+  };
+
+  const handleAdd = () => {
+    const name = networkName.trim();
+    const ip = ipAddress.trim();
+
+    if (!name) return setError(t("track_enter_network_name"));
+    if (!ip) return setError(t("track_enter_ip_address"));
+
+    // Write schema (see @/utils/trackData): { networkName, ipAddress, officeNetwork }.
+    const entry = { networkName: name, ipAddress: ip, officeNetwork };
+    onChange?.([...networks, entry]);
+    resetForm();
+  };
+
+  const handleRemove = (idx) => {
+    onChange?.(networks.filter((_, i) => i !== idx));
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-8 space-y-6">
       {/* Title + Button */}
       <div className="flex flex-wrap items-center gap-4">
         <h4 className="text-lg font-bold text-gray-800">{t("track_specific_network")}</h4>
-        <Button className="h-8 px-5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold">
+        <Button
+          type="button"
+          onClick={handleAdd}
+          className="h-8 px-5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold"
+        >
           {t("track_add_new_location")}
         </Button>
       </div>
+
+      {/* Added networks */}
+      {networks.length > 0 && (
+        <div className="space-y-2">
+          {networks.map((n, idx) => (
+            <div
+              key={idx}
+              className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
+            >
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 min-w-0">
+                <span className="font-medium text-gray-800 truncate">{n.networkName}</span>
+                <span className="text-xs text-gray-500">{n.ipAddress}</span>
+                {n.officeNetwork && (
+                  <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                    {t("track_office_network")}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleRemove(idx)}
+                title="Remove"
+                className="shrink-0 w-7 h-7 rounded-md text-red-500 hover:bg-red-50 flex items-center justify-center"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Form fields + Office Network in a 2-column layout */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
@@ -240,7 +329,7 @@ export function NetworkBasedTab() {
           <Input
             placeholder={t("track_enter_network_name")}
             value={networkName}
-            onChange={(e) => setNetworkName(e.target.value)}
+            onChange={(e) => { setNetworkName(e.target.value); setError(""); }}
             className="h-10 rounded-xl border-gray-200 text-sm"
           />
         </div>
@@ -251,21 +340,33 @@ export function NetworkBasedTab() {
           <Input
             placeholder={t("track_enter_ip_address")}
             value={ipAddress}
-            onChange={(e) => setIpAddress(e.target.value)}
+            onChange={(e) => { setIpAddress(e.target.value); setError(""); }}
             className="h-10 rounded-xl border-gray-200 text-sm"
           />
         </div>
 
-        {/* Office Network pill */}
+        {/* Office Network toggle */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg">
-            <span className="w-4 h-4 rounded-sm flex items-center justify-center shrink-0 bg-white/30">
-              <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                <path d="M2 6L5 9L10 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+          <button
+            type="button"
+            onClick={() => setOfficeNetwork((v) => !v)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              officeNetwork ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            <span
+              className={`w-4 h-4 rounded-sm flex items-center justify-center shrink-0 ${
+                officeNetwork ? "bg-white/30" : "border border-gray-400"
+              }`}
+            >
+              {officeNetwork && (
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 6L5 9L10 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
             </span>
             <span className="text-[13px] font-semibold">{t("track_office_network")}</span>
-          </div>
+          </button>
         </div>
 
         {/* Note */}
@@ -273,59 +374,164 @@ export function NetworkBasedTab() {
           <span className="text-[12px] text-gray-500">{t("track_office_network_note")}</span>
         </div>
       </div>
+
+      {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
 }
 
 /* ── GEO Location Tab ── */
-export function GeoLocationTab() {
+export function GeoLocationTab({ value = [], onChange }) {
   const { t } = useTranslation();
   const [location, setLocation] = useState("");
-  const [latLng, setLatLng] = useState("");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
   const [range, setRange] = useState("");
+  const [error, setError] = useState("");
+
+  const locations = Array.isArray(value) ? value : [];
+
+  const resetForm = () => {
+    setLocation("");
+    setLatitude("");
+    setLongitude("");
+    setRange("");
+    setError("");
+  };
+
+  const handleAdd = () => {
+    const name = location.trim();
+    const latStr = latitude.trim();
+    const lngStr = longitude.trim();
+    const rangeVal = range.trim();
+
+    if (!name) return setError(t("track_enter_location"));
+    if (!latStr || !lngStr) return setError(t("track_enter_lat_lng"));
+
+    const lat = parseFloat(latStr);
+    const lng = parseFloat(lngStr);
+    if (Number.isNaN(lat) || lat < -90 || lat > 90) {
+      return setError(t("track_enter_latitude"));
+    }
+    if (Number.isNaN(lng) || lng < -180 || lng > 180) {
+      return setError(t("track_enter_longitude"));
+    }
+    const radius = parseFloat(rangeVal);
+    if (rangeVal && Number.isNaN(radius)) return setError(t("track_enter_range"));
+
+    const entry = {
+      location: name,
+      latitude: String(lat),
+      longitude: String(lng),
+      range: rangeVal ? String(radius) : "",
+    };
+    onChange?.([...locations, entry]);
+    resetForm();
+  };
+
+  const handleRemove = (idx) => {
+    onChange?.(locations.filter((_, i) => i !== idx));
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-5">
       <div className="flex items-center gap-3">
         <h4 className="text-base font-bold text-gray-800">{t("track_geo_location_title")}</h4>
-        <Button className="h-8 px-4 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold">
+        <Button
+          type="button"
+          onClick={handleAdd}
+          className="h-8 px-4 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold"
+        >
           {t("track_add_new_location")}
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Added locations */}
+      {locations.length > 0 && (
+        <div className="space-y-2">
+          {locations.map((loc, idx) => (
+            <div
+              key={idx}
+              className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
+            >
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 min-w-0">
+                <span className="font-medium text-gray-800 truncate">{loc.location}</span>
+                <span className="text-xs text-gray-500 flex items-center gap-1">
+                  <MapPin size={11} className="text-gray-400" />
+                  {loc.latitude}, {loc.longitude}
+                </span>
+                {loc.range && (
+                  <span className="text-xs text-gray-500">{t("track_range_mts")}: {loc.range}</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleRemove(idx)}
+                title={t("track_advanced_settings") ? "Remove" : "Remove"}
+                className="shrink-0 w-7 h-7 rounded-md text-red-500 hover:bg-red-50 flex items-center justify-center"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-gray-600">{t("track_location")}</label>
           <Input
             placeholder={t("track_enter_location")}
             value={location}
-            onChange={(e) => setLocation(e.target.value)}
+            onChange={(e) => { setLocation(e.target.value); setError(""); }}
             className="h-10 rounded-lg border-gray-200 text-sm"
           />
         </div>
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-            {t("track_lat_lng")} <MapPin size={12} className="text-gray-400" />
+            {t("track_latitude")} <MapPin size={12} className="text-gray-400" />
           </label>
           <Input
-            placeholder={t("track_enter_lat_lng")}
-            value={latLng}
-            onChange={(e) => setLatLng(e.target.value)}
+            type="number"
+            step="any"
+            placeholder={t("track_enter_latitude")}
+            value={latitude}
+            onChange={(e) => { setLatitude(e.target.value); setError(""); }}
+            className="h-10 rounded-lg bg-gray-50 border-gray-200 text-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-gray-600">{t("track_longitude")}</label>
+          <Input
+            type="number"
+            step="any"
+            placeholder={t("track_enter_longitude")}
+            value={longitude}
+            onChange={(e) => { setLongitude(e.target.value); setError(""); }}
             className="h-10 rounded-lg bg-gray-50 border-gray-200 text-sm"
           />
         </div>
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-gray-600">{t("track_range_mts")}</label>
           <Input
+            type="number"
+            step="any"
             placeholder={t("track_enter_range")}
             value={range}
-            onChange={(e) => setRange(e.target.value)}
+            onChange={(e) => { setRange(e.target.value); setError(""); }}
             className="h-10 rounded-lg bg-gray-50 border-gray-200 text-sm"
           />
         </div>
       </div>
 
-      <Button variant="outline" className="h-9 px-4 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold border-0">
+      {error && <p className="text-xs text-red-500">{error}</p>}
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleAdd}
+        className="h-9 px-4 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold border-0"
+      >
         {t("track_add_new_location")}
       </Button>
     </div>
