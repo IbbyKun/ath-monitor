@@ -1472,5 +1472,12 @@
   "statusLive": "Langsung",
   "statusDisconnected": "Terputus",
   "appLabel": "Aplikasi",
-  "analytics": "Analitik"
+  "analytics": "Analitik",
+  "error": "Kesalahan",
+  "warning": "Peringatan",
+  "emp_bulk_delete": "Hapus Massal",
+  "emp_bulk_delete_confirm": "Ini akan menghapus permanen karyawan yang tercantum dalam file yang diunggah. Tindakan ini tidak dapat dibatalkan.",
+  "emp_count_deleted": "{{count}} karyawan dihapus.",
+  "emp_invalid_emails_skipped": "{{count}} email tidak cocok dengan karyawan mana pun dan dilewati.",
+  "emp_bulk_delete_failed": "Hapus massal gagal."
 }

@@ -1472,5 +1472,12 @@
   "statusLive": "En direct",
   "statusDisconnected": "Déconnecté",
   "appLabel": "Application",
-  "analytics": "Analytique"
+  "analytics": "Analytique",
+  "error": "Erreur",
+  "warning": "Avertissement",
+  "emp_bulk_delete": "Suppression en masse",
+  "emp_bulk_delete_confirm": "Cela supprimera définitivement les employés listés dans le fichier importé. Cette action est irréversible.",
+  "emp_count_deleted": "{{count}} employé(s) supprimé(s).",
+  "emp_invalid_emails_skipped": "{{count}} e-mail(s) ne correspondaient à aucun employé et ont été ignorés.",
+  "emp_bulk_delete_failed": "Échec de la suppression en masse."
 }

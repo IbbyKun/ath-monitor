@@ -1472,5 +1472,12 @@
   "statusLive": "Ao vivo",
   "statusDisconnected": "Desconectado",
   "appLabel": "Aplicativo",
-  "analytics": "Análises"
+  "analytics": "Análises",
+  "error": "Erro",
+  "warning": "Aviso",
+  "emp_bulk_delete": "Exclusão em massa",
+  "emp_bulk_delete_confirm": "Isto excluirá permanentemente os funcionários listados no arquivo enviado. Esta ação não pode ser desfeita.",
+  "emp_count_deleted": "{{count}} funcionário(s) excluído(s).",
+  "emp_invalid_emails_skipped": "{{count}} e-mail(s) não corresponderam a nenhum funcionário e foram ignorados.",
+  "emp_bulk_delete_failed": "Falha na exclusão em massa."
 }

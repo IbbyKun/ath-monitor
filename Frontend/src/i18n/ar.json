@@ -1477,5 +1477,12 @@
   "statusLive": "مباشر",
   "statusDisconnected": "غير متصل",
   "appLabel": "تطبيق",
-  "analytics": "التحليلات"
+  "analytics": "التحليلات",
+  "error": "خطأ",
+  "warning": "تحذير",
+  "emp_bulk_delete": "حذف جماعي",
+  "emp_bulk_delete_confirm": "سيؤدي هذا إلى حذف الموظفين المدرجين في الملف الذي تم تحميله نهائيًا. لا يمكن التراجع عن هذا الإجراء.",
+  "emp_count_deleted": "تم حذف {{count}} موظف.",
+  "emp_invalid_emails_skipped": "{{count}} بريد إلكتروني لم يطابق أي موظف وتم تخطيه.",
+  "emp_bulk_delete_failed": "فشل الحذف الجماعي."
 }

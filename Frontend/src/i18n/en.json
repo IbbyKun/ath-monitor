@@ -1472,5 +1472,12 @@
   "statusLive": "Live",
   "statusDisconnected": "Disconnected",
   "appLabel": "App",
-  "analytics": "Analytics"
+  "analytics": "Analytics",
+  "error": "Error",
+  "warning": "Warning",
+  "emp_bulk_delete": "Bulk Delete",
+  "emp_bulk_delete_confirm": "This will permanently delete the employees listed in the uploaded file. This action cannot be undone.",
+  "emp_count_deleted": "{{count}} employee(s) deleted.",
+  "emp_invalid_emails_skipped": "{{count}} email(s) did not match any employee and were skipped.",
+  "emp_bulk_delete_failed": "Bulk delete failed."
 }
