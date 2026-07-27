@@ -183,6 +183,23 @@ months. Capped at ~154 GB, the gap between MinIO-on-disk and Blob is about
 maintenance of a driver only you use. Not worth it. Spend that time on the
 desktop agent instead.
 
+### Dual monitors double the screenshot bill
+
+The agent captures **every connected display**, as a separate image per
+capture. Two monitors means two files every seven minutes, not one — so the
+per-user storage figures above double for anyone on a dual-monitor desk, and
+the steady-state numbers should be scaled by the *average displays per user*,
+not the user count.
+
+That is the right trade: capturing only the primary display would leave the
+second screen completely unmonitored, which is precisely where someone would
+put something they did not want seen. But budget for it rather than discovering
+it.
+
+Measured at ~100–190 KB per frame at the default quality (60) and 1600 px
+longest edge. Both are in `Agent/src/main/config.js` if the bill needs trimming
+— quality is the cheaper lever, since text stays legible well below 60.
+
 ### MinIO's `api_endpoint` must be reachable *by the browser*
 
 This one will cost you an afternoon if you meet it cold, so it is worth setting

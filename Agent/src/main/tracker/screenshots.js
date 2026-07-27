@@ -58,18 +58,18 @@ async function captureAll() {
         }
     }
 
-    // Size the capture off the largest display, capped, then let each frame
-    // keep its own aspect ratio on resize below.
-    const displays = screen.getAllDisplays();
-    const largest = displays.reduce(
-        (max, d) => Math.max(max, d.size.width * d.scaleFactor),
-        1920,
-    );
-    const width = Math.min(largest, CONFIG.SCREENSHOT_MAX_WIDTH);
+    // One thumbnailSize applies to every source, and Electron scales each
+    // frame to *fit inside* that box while preserving its aspect ratio. So the
+    // box must be square: a 16:9-shaped box silently constrains anything
+    // taller than 16:9 by its height, and a portrait secondary monitor would
+    // come back at roughly a third of the intended size — legible enough to
+    // see that Netflix is open, but not to read anything.
+    // A square box means "longest edge = MAX" regardless of orientation.
+    const box = CONFIG.SCREENSHOT_MAX_WIDTH;
 
     const sources = await desktopCapturer.getSources({
         types: ['screen'],
-        thumbnailSize: { width, height: Math.round((width * 9) / 16) },
+        thumbnailSize: { width: box, height: box },
         fetchWindowIcons: false,
     });
 
@@ -80,10 +80,17 @@ async function captureAll() {
         let image = source.thumbnail;
         if (image.isEmpty()) return;
 
-        // Preserve aspect ratio — passing only `width` makes Electron derive
-        // the height, so ultrawide and portrait monitors aren't distorted.
-        if (image.getSize().width > CONFIG.SCREENSHOT_MAX_WIDTH) {
-            image = image.resize({ width: CONFIG.SCREENSHOT_MAX_WIDTH, quality: 'good' });
+        // Belt and braces in case a source comes back larger than the box.
+        // Resize on whichever edge is longer, passing only that one so
+        // Electron derives the other and nothing is distorted — capping width
+        // alone would blow a portrait monitor up to an enormous height.
+        const { width: w, height: h } = image.getSize();
+        if (Math.max(w, h) > CONFIG.SCREENSHOT_MAX_WIDTH) {
+            image = image.resize(
+                w >= h
+                    ? { width: CONFIG.SCREENSHOT_MAX_WIDTH, quality: 'good' }
+                    : { height: CONFIG.SCREENSHOT_MAX_WIDTH, quality: 'good' },
+            );
         }
 
         shots.push({
