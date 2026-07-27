@@ -13,19 +13,29 @@ function pad(n) {
 /**
  * Build the filename the backend expects.
  *
- * This format is load-bearing, not cosmetic: the storage layer pulls the date
- * out by fixed offset — `file.originalname.substr(3, 10)` in
- * store-logs-api/src/modules/v1/desktop/service/screenshot.service.ts — so the
- * date must start at index 3. Hence the leading `HH-`.
+ * This format is load-bearing, not cosmetic, in two separate ways:
  *
- *   13-2020-04-23 13-55-07-sc0.jpg
- *   ^^ hour       ^^^^^^^^^^ date+time  ^^^ screen index
+ * 1. The storage layer pulls the date out by fixed offset —
+ *    `file.originalname.substr(3, 10)` in store-logs-api's
+ *    screenshot.service.ts — and uses it as the folder name. So the date must
+ *    start at index 3, which is what the leading `HH-` is for.
+ *
+ *      13-2020-04-23 13-55-07-sc0.jpg
+ *      ^^ hour       ^^^^^^^^^^ date+time  ^^^ screen index
+ *
+ * 2. **The timestamp must be UTC.** The admin service parses it back with
+ *    `moment.utc(...)` (Common.js `toTimezoneDateofSSTimeWithDate`) and then
+ *    converts to the employee's timezone for display, and it builds its S3
+ *    lookup prefix from the UTC date. Writing local time here shifts every
+ *    screenshot by the UTC offset: the gallery queries the hour the user
+ *    actually worked and finds nothing, while the files sit in the bucket
+ *    under a different hour. Near midnight the date folder is wrong too.
  */
 function screenshotFilename(date, screenIndex) {
-    const hh = pad(date.getHours());
+    const hh = pad(date.getUTCHours());
     const stamp =
-        `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
-        `${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
+        `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ` +
+        `${pad(date.getUTCHours())}-${pad(date.getUTCMinutes())}-${pad(date.getUTCSeconds())}`;
     return `${hh}-${stamp}-sc${screenIndex}.jpg`;
 }
 

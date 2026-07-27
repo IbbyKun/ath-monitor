@@ -140,10 +140,14 @@ All but the first take `Authorization: Bearer <token>`.
 Three details in that contract are easy to get wrong and worth knowing about
 before changing anything:
 
-1. **Screenshot filenames are parsed by offset.** The storage layer does
-   `originalname.substr(3, 10)` to get the date, so the name *must* be
-   `HH-YYYY-MM-DD HH-mm-ss-scN.jpg`. A "tidier" filename silently files every
-   screenshot under the wrong date.
+1. **Screenshot filenames are parsed by offset, and must be UTC.** The storage
+   layer does `originalname.substr(3, 10)` to get the date folder, so the name
+   *must* be `HH-YYYY-MM-DD HH-mm-ss-scN.jpg`. The admin service then parses
+   that same timestamp back with `moment.utc()` and converts it to the
+   employee's timezone for display. Write local time instead and every
+   screenshot is shifted by the UTC offset: the gallery queries the hour the
+   employee actually worked and finds nothing, while the files sit in the
+   bucket under a different hour. Near midnight the date folder is wrong too.
 2. **`activityPerSecond` arrays are capped at 400 entries** by the server's Joi
    schema. That is why the flush interval is 300 seconds and cannot simply be
    raised.
