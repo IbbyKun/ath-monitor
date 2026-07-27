@@ -23,12 +23,12 @@ ship until these are fixed.*
 
 ---
 
-## Phase 1 — Azure test environment
-*Blocked on: Phase 0, plus your Azure credentials.*
+## Phase 1 — Pilot environment (Hostinger KVM 2)
+*Blocked on: your Hostinger SSH credentials and a subdomain. Nothing else.*
 
 | # | Item | Pri | Est. | Notes |
 |---|---|---|---|---|
-| 1.1 | Provision B2ms VM + Docker | 🔴 | 1 h | ~$20–25 for a one-week pilot. See `DEPLOY.md`. |
+| 1.1 | Provision the VPS + Docker | 🔴 | 1 h | Hostinger KVM 2 (~$8/mo) was chosen over Azure B2ms. See `DEPLOY.md`. |
 | 1.2 | Deploy stack, DNS + TLS | 🔴 | 2–3 h | Let's Encrypt via nginx. |
 | 1.3 | **Set retention to 40 days** | 🟡 | 2 min | Settings → Storage Types → "Delete Data Older Than (Days)" = `40`. Config only, no code. |
 | 1.4 | Smoke test with 2–3 accounts | 🟡 | 1 h | Signup → admit → login → timer. |
