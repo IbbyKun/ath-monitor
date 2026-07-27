@@ -71,13 +71,28 @@ them to **Electron**, not to the agent.
 npm run build:win     # dist/ATH Monitor Agent Setup <version>.exe
 ```
 
-> **Build the Windows installer on Windows.** `get-windows` ships a native
-> N-API addon that `npm install` fetches per-platform. Running `npm install` on
-> macOS downloads the macOS binary, so a Windows installer cross-built from a
-> Mac will start up and then silently report no application data. There is no
-> error — just empty app-usage columns in the portal.
+**This works from macOS and Linux** — no Windows machine, no VM, no Wine.
+Verified producing a working installer from an Apple Silicon Mac.
+
+Two pieces of config make that possible, and both matter:
+
+- `npm run build:win` first runs `scripts/fetch-win-native.mjs`, which
+  downloads the **prebuilt** Windows N-API addon for `get-windows`. A plain
+  `npm install` only ever fetches the addon for the machine you are standing
+  on, and the fallback for a missing addon is a silent no-op stub — so a naive
+  cross-build produces an app that installs, runs, tracks time and screenshots
+  perfectly while reporting *no application data at all*. No error, no crash,
+  just empty columns in the portal. Never skip this step.
+- `npmRebuild: false` in `electron-builder.yml` stops electron-builder handing
+  the addon to node-gyp, which refuses to cross-compile. Nothing needs
+  compiling: N-API is ABI-stable and the binary is already built.
 
 The installer is a per-user NSIS install: no admin rights, no UAC prompt.
+
+> **Still smoke-test on a real Windows machine before rolling out.**
+> Cross-building produces a correct artifact, but "it packaged" is not "it
+> runs". One pass on Windows — install, sign in, start the timer, confirm app
+> names appear in the portal — is enough, and any spare laptop or VM will do.
 
 ### It is unsigned, on purpose
 

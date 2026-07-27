@@ -50,7 +50,9 @@ the API contract is fully documented in the DTOs.*
 | 2.2 | v2: mouse/keyboard counts, auto-update, auto-start on boot | 🟡 | 1–2 wks | The **offline queue shipped early in v1** — it was cheap and a wifi drop otherwise loses a whole afternoon. Remaining: per-key/click counts (`uiohook-napi`), `electron-updater`, launch-on-login. |
 | 2.3 | v3: browser extension for URLs | 🟢 | 1–2 wks | Without it you get "Chrome: 3h", not "Jira 2h / YouTube 1h". |
 | 2.4 | Repoint the "Download Agent" button at your own installer | 🟡 | 2 h | Endpoint and UI already exist; it currently serves a Qt binary you don't control. Now unblocked — 2.1 produces the installer. |
-| 2.5 | **Build the Windows installer on a Windows machine** | 🔴 | — | `get-windows` fetches a per-platform native addon at `npm install`. An installer cross-built from macOS starts fine and then silently reports no app data — no error, just empty columns. |
+| ~~2.5~~ | ~~Build the Windows installer on a Windows machine~~ | ✅ | done | **Not needed — it cross-builds from macOS/Linux.** `get-windows` publishes *prebuilt* Windows addons, so `scripts/fetch-win-native.mjs` just downloads one; `npmRebuild: false` stops node-gyp trying to compile it. Verified: a 96 MB NSIS installer with correct PE metadata, built on an Apple Silicon Mac. No VM, no Wine. |
+| 2.6 | Smoke-test the Windows build on a real Windows machine | 🔴 | 30 min | "It packaged" ≠ "it runs". One pass: install, sign in, start timer, confirm app names reach the portal. Any spare laptop or VM. |
+| 2.7 | Add an application icon | 🟢 | 30 min | Currently ships the stock Electron icon (`build/icon.ico`, 256×256). Minor, but a generic icon on an unsigned autostarting app is one more reason for a user to distrust it. |
 
 **Deliberately out of scope:** keystroke *content* capture. It's a keylogger —
 captures passwords, triggers antivirus, carries real legal exposure. Productive time

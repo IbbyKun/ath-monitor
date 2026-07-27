@@ -10,7 +10,8 @@
     "start": "electron .",
     "dev": "cross-env AGENT_DEV=1 electron .",
     "pack": "electron-builder --dir",
-    "build:win": "electron-builder --win --x64",
+    "fetch:win-native": "node scripts/fetch-win-native.mjs",
+    "build:win": "npm run fetch:win-native && electron-builder --win --x64",
     "build:mac": "electron-builder --mac"
   },
   "dependencies": {
