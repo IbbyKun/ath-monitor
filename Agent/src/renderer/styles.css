@@ -1,0 +1,263 @@
+/* Palette borrowed from the web portal's login screen so the agent reads as
+   the same product: cyan #5CE1FD into blue #2079FD on a slate ground. */
+
+:root {
+    --bg: #0f172a;
+    --panel: #16213b;
+    --line: #24324f;
+    --text: #e8eefc;
+    --muted: #8ea0c4;
+    --accent-a: #5ce1fd;
+    --accent-b: #2079fd;
+    --good: #22c55e;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    height: 100%;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+}
+
+.view {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 24px 22px;
+    height: 100%;
+}
+.view[hidden] { display: none; }
+
+/* ── sign in ─────────────────────────────────────────────────────────── */
+
+.brand { text-align: center; }
+
+.brand-mark {
+    width: 44px;
+    height: 44px;
+    margin: 4px auto 12px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+}
+
+.brand h1 {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.brand-sub {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12.5px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+}
+
+input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--text);
+    font-size: 14px;
+    user-select: text;
+}
+
+input:focus-visible {
+    outline: none;
+    border-color: var(--accent-a);
+    box-shadow: 0 0 0 3px rgb(92 225 253 / 0.16);
+}
+
+details#advanced { margin-top: 10px; }
+
+details#advanced summary {
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 12px;
+    list-style: none;
+}
+details#advanced summary::-webkit-details-marker { display: none; }
+details#advanced summary::before { content: "▸ "; }
+details#advanced[open] summary::before { content: "▾ "; }
+
+/* ── buttons ─────────────────────────────────────────────────────────── */
+
+button {
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: var(--radius);
+}
+
+.primary {
+    margin-top: 14px;
+    padding: 11px 16px;
+    font-weight: 600;
+    color: #06121f;
+    background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
+}
+
+.primary:hover { filter: brightness(1.07); }
+.primary:disabled { opacity: 0.5; cursor: default; filter: none; }
+
+.primary.big { padding: 14px; font-size: 15px; margin-top: 0; }
+
+/* Stop is destructive-adjacent, so it drops the brand gradient entirely
+   rather than just tinting — the two states should never be confusable. */
+.primary.big.running {
+    background: #2b1220;
+    color: #ffd7e0;
+    border: 1px solid #7f2038;
+}
+
+.link {
+    background: none;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 4px;
+    text-decoration: underline;
+}
+.link:hover { color: var(--text); }
+
+button:focus-visible {
+    outline: 2px solid var(--accent-a);
+    outline-offset: 2px;
+}
+
+/* ── main view ───────────────────────────────────────────────────────── */
+
+.topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.who { margin: 0; font-weight: 600; font-size: 13.5px; }
+
+.muted {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: 11.5px;
+    word-break: break-all;
+}
+
+.clock {
+    text-align: center;
+    padding: 18px 12px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--panel);
+}
+
+.clock-label {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.clock-time {
+    margin: 6px 0 4px;
+    font-size: 38px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    /* Digits must not jitter as the seconds tick over. */
+    font-variant-numeric: tabular-nums;
+}
+
+.clock.running .clock-time { color: #b8f5cc; }
+
+.stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 0;
+}
+
+.stats > div {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 9px 11px;
+    background: var(--panel);
+}
+
+.stats dt {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+}
+
+.stats dd {
+    margin: 3px 0 0;
+    font-size: 15px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── messages ────────────────────────────────────────────────────────── */
+
+.error, .notice {
+    margin: 0;
+    padding: 9px 11px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.error {
+    background: rgb(248 113 113 / 0.12);
+    border: 1px solid rgb(248 113 113 / 0.35);
+    color: #ffc9c9;
+}
+
+.notice {
+    background: rgb(251 191 36 / 0.1);
+    border: 1px solid rgb(251 191 36 / 0.3);
+    color: #ffe9b3;
+}
+
+.error[hidden], .notice[hidden] { display: none; }
+
+.foot {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.conn { font-size: 13px; color: var(--good); }
+.conn.offline { color: var(--bad); }
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+}

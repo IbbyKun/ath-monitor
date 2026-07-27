@@ -1,0 +1,57 @@
+appId: com.athgadlang.athmonitoragent
+productName: ATH Monitor Agent
+copyright: Copyright © ATH Gadlang
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - src/**/*
+  - package.json
+  - '!**/*.map'
+
+# get-windows ships a native helper binary (a .node addon on Windows, a compiled
+# Swift executable on macOS). Neither can be executed from inside an asar
+# archive, so they must stay unpacked on disk.
+asarUnpack:
+  - '**/node_modules/get-windows/**'
+
+# ── IMPORTANT: do not add a packer/obfuscator here ──────────────────────────
+# We ship unsigned (see BACKLOG.md "Phase 2 — DECIDED: no certificate"). An
+# unsigned binary that screenshots, autostarts and phones home already sits
+# close to Defender's spyware heuristics; UPX/obfuscation is the single biggest
+# additional driver of antivirus false positives and would tip it over.
+# Keep the output plain.
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  # No `certificateFile` / `signtool` on purpose — unsigned by decision.
+  signAndEditExecutable: false
+
+nsis:
+  oneClick: false
+  perMachine: false          # per-user install => no UAC prompt, no admin needed
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ATH Monitor Agent
+
+mac:
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  category: public.app-category.productivity
+  # macOS is dev/test only for now — the pilot fleet is Windows.
+  identity: null
+  extendInfo:
+    NSScreenCaptureUsageDescription: >-
+      ATH Monitor Agent captures periodic screenshots of your screen while the
+      timer is running, so your work time can be reported to your employer.
+
+linux:
+  target:
+    - AppImage
+  category: Utility
