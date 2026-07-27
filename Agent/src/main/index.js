@@ -122,17 +122,20 @@ function refreshTray() {
 async function startTimer() {
     if (!auth || tracker.isRunning) return;
 
-    // Frequency is per-organisation, so it has to come from the server rather
-    // than a constant. A failure here is not fatal — fall back to the default.
+    // Screenshot frequency and the idle threshold are both per-organisation
+    // settings, so they come from the server rather than constants. A failure
+    // here is not fatal — the tracker falls back to its defaults.
     let perHour;
+    let idleMinutes;
     try {
         const feature = await api.fetchFeatureStatus(auth.token);
         perHour = feature && feature.screenshot && Number(feature.screenshot.frequencyPerHour);
+        idleMinutes = feature && Number(feature.idleInMinute);
     } catch (err) {
-        console.warn('[main] could not read feature-status, using default frequency:', err.message);
+        console.warn('[main] could not read feature-status, using defaults:', err.message);
     }
 
-    tracker.start(auth, perHour);
+    tracker.start(auth, { screenshotsPerHour: perHour, idleMinutes });
     refreshTray();
 }
 

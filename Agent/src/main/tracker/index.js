@@ -35,8 +35,15 @@ class Tracker extends EventEmitter {
         this.screenshotTimer = null;
         this.drainTimer = null;
         this.screenshotsPerHour = CONFIG.DEFAULT_SCREENSHOTS_PER_HOUR;
+        this.idleMinRunSec = CONFIG.DEFAULT_IDLE_MIN_RUN_SEC;
         this.lastError = null;
         this.screenshotCount = 0;
+
+        // Whether the *current* run of inactivity has already had its opening
+        // stretch charged as idle. Lives on the tracker, not the interval,
+        // because a run routinely spans a flush boundary — the threshold is
+        // as long as the interval itself.
+        this.idleRunCharged = false;
     }
 
     // ── lifecycle ───────────────────────────────────────────────────────────
@@ -49,7 +56,7 @@ class Tracker extends EventEmitter {
      * @param {{token: string, employeeId: number}} auth
      * @param {number} [screenshotsPerHour] from the server's feature-status
      */
-    start(auth, screenshotsPerHour) {
+    start(auth, { screenshotsPerHour, idleMinutes } = {}) {
         if (this.session) return;
 
         this.auth = auth;
@@ -58,14 +65,16 @@ class Tracker extends EventEmitter {
         if (screenshotsPerHour > 0 && !process.env.AGENT_SCREENSHOTS_PER_HOUR) {
             this.screenshotsPerHour = screenshotsPerHour;
         }
+        if (idleMinutes > 0) this.idleMinRunSec = Math.round(idleMinutes * 60);
 
         const now = new Date();
         this.session = {
             startedAt: now,
-            activeSeconds: 0,       // whole-session counters, for the UI
-            idleSeconds: 0,
+            activeSeconds: 0,        // seconds with keyboard/mouse input
+            idleExcludedSeconds: 0,  // seconds dropped by the idle-run rule
         };
         this.screenshotCount = 0;
+        this.idleRunCharged = false;
 
         // Persisted so a crash mid-session can still be closed out on next
         // launch (see recoverInterruptedSession).
@@ -102,7 +111,8 @@ class Tracker extends EventEmitter {
             running: this.isRunning,
             startedAt: this.session ? this.session.startedAt.toISOString() : null,
             activeSeconds: this.session ? this.session.activeSeconds : 0,
-            idleSeconds: this.session ? this.session.idleSeconds : 0,
+            idleExcludedSeconds: this.session ? this.session.idleExcludedSeconds : 0,
+            idleMinRunSec: this.idleMinRunSec,
             screenshotCount: this.screenshotCount,
             queued: queue.size(),
             screenshotsPerHour: this.screenshotsPerHour,
@@ -131,16 +141,16 @@ class Tracker extends EventEmitter {
         if (!iv) return;
 
         // getSystemIdleTime() is seconds since the last keyboard/mouse input,
-        // OS-wide. 0 means input happened within the last second, which is our
-        // definition of an "active second".
+        // OS-wide. It reports the length of the *current* run of inactivity,
+        // which is exactly what the idle rule needs and, usefully, survives
+        // flush boundaries without us having to track the run's start.
         const idle = powerMonitor.getSystemIdleTime();
         const isActive = idle === 0;
 
         iv.activePerSecond.push(isActive ? 1 : 0);
         if (isActive) this.session.activeSeconds += 1;
-        else this.session.idleSeconds += 1;
 
-        if (idle >= CONFIG.IDLE_THRESHOLD_SEC) iv.breakSeconds += 1;
+        this._accountForIdle(idle, iv);
 
         iv.ticks += 1;
 
@@ -158,6 +168,41 @@ class Tracker extends EventEmitter {
 
         // Cheap enough to emit every second; the renderer just re-renders text.
         this.emit('status', this.getStatus());
+    }
+
+    /**
+     * Apply the idle rule for one tick.
+     *
+     * A run of inactivity is only deducted once it reaches `idleMinRunSec`,
+     * and then the *whole* run is deducted — not just the part past the
+     * threshold. So the moment the run crosses the line we charge everything
+     * accumulated so far in one go, and every later second one at a time.
+     * If input arrives before the line, nothing is ever charged and the run
+     * simply resets: a four-minute pause counts as work.
+     *
+     * @param {number} idle seconds since the last input, OS-wide
+     * @param {object} iv   the interval being accumulated
+     */
+    _accountForIdle(idle, iv) {
+        if (idle === 0) {
+            this.idleRunCharged = false;   // run broken — the next one starts fresh
+            return;
+        }
+        if (idle < this.idleMinRunSec) return;   // not yet a break; may never be
+
+        let charge = 1;
+        if (!this.idleRunCharged) {
+            // Crossing the threshold: bill the run retroactively. Clamp to the
+            // interval so a run that began before this one cannot report more
+            // break than the interval contains. The seconds before that point
+            // were already reported as worked in the previous batch — the
+            // day's total stays right, only the attribution shifts forward.
+            charge = Math.min(idle, iv.activePerSecond.length);
+            this.idleRunCharged = true;
+        }
+
+        iv.breakSeconds += charge;
+        this.session.idleExcludedSeconds += charge;
     }
 
     async _sampleWindow() {
@@ -254,7 +299,10 @@ class Tracker extends EventEmitter {
                 taskId: 0,
                 taskNote: '',
 
-                breakInSeconds: iv.breakSeconds,
+                // Clamped: a retroactive charge for a run that started in an
+                // earlier interval could otherwise exceed this interval's own
+                // length, which would be nonsense to the reporting side.
+                breakInSeconds: Math.min(iv.breakSeconds, elapsed),
 
                 // v1 has no input hooks, so we cannot separate clicks from
                 // keypresses — uiohook-napi is backlog 2.2. What we do have is
@@ -313,7 +361,7 @@ class Tracker extends EventEmitter {
         // Don't spend storage on a locked or abandoned machine — those seconds
         // are already excluded from worked time, so the frames would show
         // nothing anyone will look at. 40-day retention makes this worth doing.
-        if (powerMonitor.getSystemIdleTime() >= CONFIG.IDLE_THRESHOLD_SEC) return;
+        if (powerMonitor.getSystemIdleTime() >= this.idleMinRunSec) return;
 
         let shots;
         try {

@@ -24,10 +24,23 @@ const CONFIG = {
     SAMPLE_INTERVAL_MS: 1000,
 
     /**
-     * Seconds of no keyboard/mouse input before the time stops counting as
-     * worked. Mirrors the server's `idleInMinute: 2` default.
+     * How long a *continuous* run of no input must last before any of it is
+     * treated as idle, in seconds.
+     *
+     * The rule is all-or-nothing per run, not a running total:
+     *   - stop for 4 minutes, then move the mouse -> nothing is deducted, the
+     *     whole 4 minutes counts as worked time, and the run resets;
+     *   - stop for 7 minutes -> all 7 minutes are deducted, not just the 2
+     *     past the threshold.
+     *
+     * Short pauses are how people actually work — reading, thinking, talking
+     * to someone at the desk — so charging them as idle would under-report
+     * real work. A five-minute gap is a genuine break.
+     *
+     * This is only the fallback: the real value comes from the organisation's
+     * `idleInMinute` setting via /desktop/feature-status.
      */
-    IDLE_THRESHOLD_SEC: 120,
+    DEFAULT_IDLE_MIN_RUN_SEC: 300,
 
     /**
      * Screenshots per hour. The server default is 9 (~1 every 7 minutes); the

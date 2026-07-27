@@ -26,6 +26,7 @@ const el = {
     toggleBtn: $('toggle-btn'),
     statActive: $('stat-active'),
     statIdle: $('stat-idle'),
+    statIdleLabel: $('stat-idle-label'),
     statShots: $('stat-shots'),
     statQueued: $('stat-queued'),
     notice: $('notice'),
@@ -76,7 +77,16 @@ function renderStatus(status) {
         : 'Press start when you begin work.';
 
     el.statActive.textContent = status.running ? compact(status.activeSeconds) : '—';
-    el.statIdle.textContent = status.running ? compact(status.idleSeconds) : '—';
+
+    // Not "idle" in the loose sense — this is only time the idle rule has
+    // actually removed from the day, so the number should not move for short
+    // pauses. Spelling that out in the tooltip avoids the obvious support
+    // question of "why does it say 0 when I just went for coffee".
+    el.statIdle.textContent = status.running ? compact(status.idleExcludedSeconds) : '—';
+    const idleMins = Math.round((status.idleMinRunSec || 300) / 60);
+    el.statIdleLabel.title =
+        `Time removed from your total. Only counts once you stop for ${idleMins} minutes ` +
+        `without a break in input — shorter pauses still count as work.`;
     el.statShots.textContent = status.running ? String(status.screenshotCount) : '—';
     el.statQueued.textContent = status.queued > 0 ? String(status.queued) : 'none';
 
