@@ -4,9 +4,24 @@ const buildService = require('./services/build.service');
 const buildValidator = require('./build.validation');
 const { Storage } = require('@google-cloud/storage');
 
-const storage = new Storage({ keyFilename: 'storageconfig.json' });
+// Google Cloud Storage backs the agent-installer download only. Constructing the
+// client at module load meant an unset BUCKET_NAME threw
+// ("A bucket name is needed to use Cloud Storage") and took the ENTIRE admin
+// service down at boot over one optional feature. Resolve it lazily instead, so
+// only the handlers that actually touch GCS fail — and with a clear message.
 const bucketName = process.env.BUCKET_NAME;
-const bucket = storage.bucket(bucketName);
+
+let storage;
+function getBucket() {
+    if (!bucketName) {
+        throw new Error(
+            'BUCKET_NAME is not configured — the agent installer download/upload ' +
+            'is unavailable. Set BUCKET_NAME and provide storageconfig.json to enable it.'
+        );
+    }
+    if (!storage) storage = new Storage({ keyFilename: 'storageconfig.json' });
+    return storage.bucket(bucketName);
+}
 
 class BuildController {
     async add(req, res, next) {
@@ -68,7 +83,7 @@ class BuildController {
                 options.prefix =  `EmpMonitor/${uniqueKey}/`;
             }
            
-            const [files] = await bucket.getFiles(options);
+            const [files] = await getBucket().getFiles(options);
            
             files.forEach((file) => {
                 fileInfos.push({
@@ -93,7 +108,7 @@ const uploadImage = (file, folderName) =>
         
         const { originalname, buffer } = file;
         try {
-            const blob = storage.bucket(bucketName).file(`${folderName}/${originalname.replace(/ /g, '_')}`);
+            const blob = getBucket().file(`${folderName}/${originalname.replace(/ /g, '_')}`);
             const blobStream = blob.createWriteStream({
                 resumable: false,
             });

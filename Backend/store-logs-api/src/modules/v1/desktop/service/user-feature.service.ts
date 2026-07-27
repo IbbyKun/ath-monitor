@@ -16,7 +16,9 @@ export class UserFeatureService {
                 info: { type: 'personal or office', visibility: 'true-visible mode , false-stealth mode' }
             },
             screenshot: {
-                frequencyPerHour: 30,
+                // ~1 screenshot every 7 minutes — matches the admin service's
+                // default.settings.json fallback.
+                frequencyPerHour: 9,
                 employeeAccessibility: false,
                 employeeCanDelete: false
             },

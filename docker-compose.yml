@@ -1,0 +1,402 @@
+# EmpMonitor — full local / single-host stack.
+#
+# First run:
+#   cp .env.docker.example .env
+#   docker compose build
+#   docker compose up -d mysql mongo redis minio
+#   docker compose --profile setup run --rm migrations     # loads the schema (one-shot)
+#   docker compose up -d
+#   open http://localhost:8090
+#
+# Migrations are behind a profile on purpose: Backend/migrations/emp-monitor.sql
+# is NOT idempotent (it re-adds PRIMARY KEYs), so it must not re-run on every
+# `up`. Run it explicitly on a fresh database only.
+#
+# Storage note: this app has no Azure Blob driver — it supports S3, Google Drive,
+# OneDrive, Dropbox, Zoho, WebDAV, FTP and SFTP. MinIO below provides an
+# S3-compatible endpoint, which the existing S3 driver already understands
+# (Backend/admin/src/utils/helpers/S3Utils.js handles custom endpoints). On
+# Azure, run MinIO on the VM or point the S3 driver at real AWS S3.
+
+name: empmonitor
+
+# ── Shared config ────────────────────────────────────────────────────────────
+x-datastores: &datastores
+  MYSQL_HOST: mysql
+  MYSQL_USERNAME: root
+  MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+  MYSQL_DBNAME: ${MYSQL_DATABASE}
+  MYSQL_DATABASE: ${MYSQL_DATABASE}
+  MYSQL_POOL_CONNECTION_LIMIT: "10"
+  MONGO_URI: mongodb://mongo:27017/${MYSQL_DATABASE}
+  MONGO_DB_NAME: ${MYSQL_DATABASE}
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: ""
+
+x-secrets: &secrets
+  CRYPTO_PASSWORD: ${CRYPTO_PASSWORD}
+  JWT_ACCESS_TOKEN_SECRET: ${JWT_ACCESS_TOKEN_SECRET}
+  JWT_REFRESH_TOKEN_SECRET: ${JWT_REFRESH_TOKEN_SECRET}
+  JWT_SECRET: ${JWT_SECRET}
+  SESSION_SECRET: ${SESSION_SECRET}
+  SECRET_KEY: ${SECRET_KEY}
+  JWT_EXPIRY: 7d
+  JWT_TOKEN_LIFE: 10h
+
+# Internal service-to-service URLs (container DNS = service name).
+x-internal-urls: &internal-urls
+  WEB_SOCKET_SERVER_URL: http://web-socket-server:8080/notification
+  ACTIVITY_PRODUCTIVITY_URL: http://productivity_report:3005/api/v1/reports/activity
+  CRONS_JOBS_URL: http://cronjobs:3003/api/v3/enableFailedRestore
+
+x-node-defaults: &node-defaults
+  restart: unless-stopped
+  init: true
+  networks: [empnet]
+
+# ─────────────────────────────────────────────────────────────────────────────
+services:
+
+  # ── Datastores ─────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes: [mysql-data:/var/lib/mysql]
+    ports: ["${MYSQL_PORT:-3306}:3306"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks: [empnet]
+
+  mongo:
+    image: mongo:6
+    restart: unless-stopped
+    volumes: [mongo-data:/data/db]
+    ports: ["${MONGO_PORT:-27017}:27017"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks: [empnet]
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes: [redis-data:/data]
+    ports: ["${REDIS_PORT:-6379}:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    networks: [empnet]
+
+  # S3-compatible object storage for screenshots / screen recordings.
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes: [minio-data:/data]
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [empnet]
+
+  # Creates the screenshots bucket once MinIO is healthy, then exits.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio: { condition: service_healthy }
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/${MINIO_BUCKET} &&
+      echo 'bucket ${MINIO_BUCKET} ready'
+      "
+    networks: [empnet]
+
+  # ── One-shot schema loader (profile: setup) ────────────────────────────────
+  migrations:
+    profiles: ["setup"]
+    build:
+      context: ./Backend/migrations
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE_NAME: ${MYSQL_DATABASE}
+      MYSQL_POOL_CONNECTION_LIMIT: "10"
+      MONGO_URL: mongodb://mongo:27017/${MYSQL_DATABASE}
+      # true DROPS the database first. Only safe on a genuinely fresh install.
+      FRESH_DB: ${FRESH_DB:-false}
+    depends_on:
+      mysql: { condition: service_healthy }
+      mongo: { condition: service_healthy }
+    networks: [empnet]
+
+  # ── Backend services ───────────────────────────────────────────────────────
+  admin:
+    <<: *node-defaults
+    build:
+      context: ./Backend
+      args: { SERVICE: admin, ENTRY: adminApi.js }
+    environment:
+      <<: [*datastores, *secrets, *internal-urls]
+      NODE_ENV: production
+      PORT: "3000"
+      IS_DEBUGGING: "false"
+      VERSION: V3
+      API_URL_LOCAL: http://admin:3000
+      ALERT_SERVICE_URL: http://admin:3000
+      IS_ALERT_SERVICE_ENABLED: "false"
+      PAGINATION_LIMIT: "10"
+      MYSQL_TIMEOUT: "60000"
+      RATE_LIMIT_DURATION: "15"
+      RATE_LIMIT_REQUEST_ALLOWED: "1000"
+      FREE_PLAN_ID: "13"
+      IDLE_MINUTES: "15"
+      MAX_PRE_REQUEST: "86400"
+      # Used directly as jwt `expiresIn`; unset makes jsonwebtoken throw.
+      BIOMETRIC_EXPIRY: 1y
+      BRAND_NAME: EmpMonitor
+      # Customer-specific org-ID allowlists. The code calls
+      # `process.env.X.split(',')` on each WITHOUT a null guard, so leaving any
+      # of them unset throws "Cannot read properties of undefined (reading
+      # 'split')" and turns the dashboard and timesheet endpoints into 500s.
+      # Empty string = feature off for every org, which is the correct default.
+      ORGANIZATION_ID: ""
+      ORGANIZATION_ID_WITH_OPTIONAL_USER_EMAIL: ""
+      WORKING_HOURS_ORG_ID: ""
+      IP_MASKING_ORG_ID: ""
+      COMP_UNAME_ORG_ID: ""
+      MERGE_USERNAME_ORG_ID: ""
+      BLOCKING_FORGOT_PASSWORD_ORG_ID: ""
+      COMPUTERNAMESTART: ""
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      EMP_ADMIN_EMAIL: ${EMP_ADMIN_EMAIL:-}
+      PUSH_NOTIFICATION_TRANSPORT: websocket
+      # Local-dev admin login bypass (no EmpCloud dependency). Leave
+      # AUTH_METHOD_V3 unset in production to use the real SSO path.
+      AUTH_METHOD_V3: ${AUTH_METHOD_V3:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_DETAILS: ${ADMIN_DETAILS:-}
+    depends_on:
+      mysql: { condition: service_healthy }
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports: ["${ADMIN_PORT:-3010}:3000"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/"]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+      start_period: 45s
+
+  store-logs-api:
+    <<: *node-defaults
+    build:
+      context: ./Backend
+      dockerfile: store-logs-api/Dockerfile
+    environment:
+      <<: [*datastores, *secrets, *internal-urls]
+      NODE_ENV: production
+      PORT: "3001"
+      IS_DEBUGGING: "false"
+      ENABLE_VALIDATION: "false"
+      UPLOAD_PATH: ./public/uploads
+      TIMEZONE: ${TIMEZONE:-Africa/Abidjan}
+      TIMEZONE_SEQUELIZE: "+00:00"
+      DROP_TABLE: "false"
+      MONGO_ACTIVITY_DURATION_PER_CALL_IN_SECONDS: "300"
+      MAX_REQUEST_ALLOWED: "2500000"
+      MAX_REQUEST_ALLOWED_TIMEFRAME: "150"
+    depends_on:
+      mysql: { condition: service_healthy }
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports: ["${STORE_LOGS_PORT:-3001}:3001"]
+    volumes: [uploads:/app/store-logs-api/public/uploads]
+
+  desktop:
+    <<: *node-defaults
+    build:
+      context: ./Backend
+      args: { SERVICE: desktop, ENTRY: desktopApi.js }
+    environment:
+      <<: [*datastores, *secrets, *internal-urls]
+      NODE_ENV: production
+      PORT: "3002"
+      IS_DEBUGGING: "false"
+      VERSION: V3
+      API_URL_LOCAL: http://desktop:3002
+      ADMIN_URL_LOCAL: http://admin:3000/
+      PAGINATION_LIMIT: "10"
+      MYSQL_TIMEOUT: "60000"
+      RATE_LIMIT_DURATION: "30"
+      RATE_LIMIT_REQUEST_ALLOWED: "10000000000"
+      MAX_REQUEST_ALLOWED: "100000000"
+      MAX_REQUEST_ALLOWED_TIMEFRAME: "60"
+      MAX_REQUEST_ALLOWED_TIMEFRAME_FOR_AUTH: "3600"
+      PLAN_CACHE_INTERVAL: "86400"
+      RABBITMQ_URL: ${RABBITMQ_URL:-}
+      # Unguarded `.split(',')` call sites — see the note on the admin service.
+      COMPUTERNAMESTART: ""
+      COMP_UNAME_ORG_ID: ""
+      MERGE_USERNAME_ORG_ID: ""
+    depends_on:
+      mysql: { condition: service_healthy }
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports: ["${DESKTOP_PORT:-3002}:3002"]
+
+  cronjobs:
+    <<: *node-defaults
+    build:
+      context: ./Backend
+      args: { SERVICE: cronjobs, ENTRY: cronService.js }
+    environment:
+      <<: [*datastores, *secrets, *internal-urls]
+      NODE_ENV: production
+      PORT: "3003"
+      IS_DEBUGGING: "false"
+      API_URL_LOCAL: http://admin:3000
+      SCREENSHOTS_DEL: "1"
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      SMTP_URL: ${SMTP_URL:-}
+      EMP_ADMIN_EMAIL: ${EMP_ADMIN_EMAIL:-}
+      BRAND_NAME: EmpMonitor
+      # Required at require-time by the Twilio SDK constructor even when SMS
+      # is disabled; and REPORT_CRON is read unconditionally when scheduling.
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-ACdummy0000000000000000000000000}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-dummy_auth_token}
+      REPORT_CRON: ${REPORT_CRON:-0 * * * *}
+    depends_on:
+      mysql: { condition: service_healthy }
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  productivity_report:
+    <<: *node-defaults
+    build:
+      context: ./Backend
+      args: { SERVICE: productivity_report, ENTRY: productivity_report_api.js }
+    environment:
+      <<: [*datastores, *secrets, *internal-urls]
+      NODE_ENV: production
+      PORT: "3005"
+      IS_DEBUGGING: "false"
+      VERSION: V3
+      ALERT_SERVICE_URL: http://admin:3000/api/v3/jobs
+      PAGINATION_LIMIT: "10"
+      MYSQL_TIMEOUT: "60000"
+      RATE_LIMIT_DURATION: "15"
+      RATE_LIMIT_REQUEST_ALLOWED: "1000"
+      FREE_PLAN_ID: "13"
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      EMP_ADMIN_EMAIL: ${EMP_ADMIN_EMAIL:-}
+      # Unguarded `.split(',')` call sites — see the note on the admin service.
+      ORGANIZATION_ID: ""
+      IP_MASKING_ORG_ID: ""
+      WORKING_HOURS_ORG_ID: ""
+    depends_on:
+      mysql: { condition: service_healthy }
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports: ["${PRODUCTIVITY_PORT:-3005}:3005"]
+
+  web-socket-server:
+    <<: *node-defaults
+    build:
+      context: ./Backend
+      args: { SERVICE: web-socket-server, ENTRY: server.js }
+    environment:
+      <<: *secrets
+      NODE_ENV: production
+      PORT: "8080"
+      NOTIFICATION_PREFIX: notification
+    ports: ["${WS_PORT:-8080}:8080"]
+
+  realtime:
+    <<: *node-defaults
+    build:
+      context: ./Backend
+      args: { SERVICE: realtime, ENTRY: server.js }
+    environment:
+      <<: [*datastores, *secrets]
+      NODE_ENV: production
+      PORT: "5002"
+      REDIS_HOST_SUBSCRIBER: redis
+      REDIS_HOST_PUBLISHER: redis
+      REDIS_PASSWORD_SUBSCRIBER: ""
+      REDIS_PASSWORD_PUBLISHER: ""
+    depends_on:
+      redis: { condition: service_healthy }
+    ports: ["${REALTIME_PORT:-5002}:5002"]
+
+  remote_socket:
+    <<: *node-defaults
+    build:
+      context: ./Backend
+      args: { SERVICE: remote_socket, ENTRY: server.js }
+    environment:
+      <<: [*datastores, *secrets]
+      NODE_ENV: production
+      PORT: "5001"
+    depends_on:
+      redis: { condition: service_healthy }
+    ports: ["${REMOTE_SOCKET_PORT:-5001}:5001"]
+
+  # ── Frontend (also the public entrypoint / reverse proxy) ──────────────────
+  frontend:
+    restart: unless-stopped
+    build:
+      context: ./Frontend
+      args:
+        # Same-origin relative paths: nginx proxies these to the services, so
+        # the built image carries no hostnames and works unchanged on Azure.
+        #
+        # These must NOT be empty strings. api.service.js reads them as
+        # `import.meta.env.X || '<hardcoded empcloud production URL>'`, and an
+        # empty string is falsy — so "" silently sends the browser to the real
+        # production API instead of this stack. "/" is the correct same-origin base.
+        VITE_API_URL: /api/v3
+        VITE_BACKEND_V4_URL: "/"
+        VITE_STORE_LOGS_API_URL: /api/v1
+        # Websocket origin is host-dependent; set per deployment (e.g.
+        # wss://monitor.yourdomain.com). Only affects live monitoring.
+        VITE_SOCKET_URL: ${VITE_SOCKET_URL:-ws://localhost:8090}
+        VITE_CRYPTO_PASSWORD: ${CRYPTO_PASSWORD}
+        VITE_PASSWORD_IV: ${VITE_PASSWORD_IV}
+        VITE_SHOW_EMP_AI_ASSISTANT: "false"
+    depends_on: [admin, store-logs-api]
+    ports: ["${HTTP_PORT:-8090}:80"]
+    networks: [empnet]
+
+networks:
+  empnet:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  mongo-data:
+  redis-data:
+  minio-data:
+  uploads:

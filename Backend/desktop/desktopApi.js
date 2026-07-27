@@ -1,5 +1,15 @@
 'use strict';
-if (process.env.NODE_ENV === 'production') require('newrelic');
+// Optional APM. `newrelic` is not a declared dependency of this service (it is in
+// no package.json, has no newrelic.js config and no NEW_RELIC_* env vars) — it was
+// historically supplied by the host environment. Load it only if it is actually
+// installed, so a clean production container without it still boots.
+if (process.env.NODE_ENV === 'production') {
+    try {
+        require('newrelic');
+    } catch (err) {
+        if (err.code !== 'MODULE_NOT_FOUND') throw err;
+    }
+}
 if (process.env.IS_DEBUGGING) console.log(`= server.js loaded => ${process.env.NODE_ENV} =`);
 
 

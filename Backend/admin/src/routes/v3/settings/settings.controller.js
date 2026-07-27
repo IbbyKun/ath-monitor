@@ -220,7 +220,10 @@ class Settings {
                             visibility: false,
                         },
                         screenshot: {
-                            frequencyPerHour: 30,
+                            // ~1 screenshot every 7 minutes. Keep in step with
+                            // default.settings.json — this is the fallback used
+                            // when an org has no stored screenshot settings.
+                            frequencyPerHour: 9,
                             employeeAccessibility: false,
                             employeeCanDelete: false
                         },

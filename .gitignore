@@ -9,6 +9,9 @@ vendor
 .env.*
 .env.local
 .env.production
+# ...but templates carry no secrets and must be committed.
+!.env.docker.example
+!.env.example
 *.pem
 *.key
 *.log

@@ -13,7 +13,11 @@ const ProvidersAndExports = [
 
 const mongoOption: any = { useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true, useFindAndModify: false };
 
-if (process.env.NODE_ENV === 'production') {
+// Only attach credentials when they actually exist. Previously this fired for any
+// production build, so an unauthenticated Mongo (or credentials supplied inside
+// MONGO_URI itself) handed the driver `{user: undefined, password: undefined}`
+// and it failed with "No AuthProvider for default defined" in a crash loop.
+if (process.env.NODE_ENV === 'production' && process.env.MONGO_USER) {
     mongoOption.auth = { user: process.env.MONGO_USER, password: process.env.MONGO_PASSWORD };
 }
 

@@ -10,9 +10,23 @@ const sgMail = require('@sendgrid/mail');
 const { forgotPasswordMessages, roleUpateMailMessage } = require('../../../utils/helpers/LanguageTranslate');
 const { Storage } = require('@google-cloud/storage');
 
-const storage = new Storage({ keyFilename: 'storageconfig.json' });
+// Lazily resolved: constructing the GCS client at module load meant an unset
+// BUCKET_NAME_BIOMETRICS threw ("A bucket name is needed to use Cloud Storage")
+// and took the whole admin service down at boot, even for deployments that never
+// use biometrics. Same treatment as build.controller.js.
 const bucketName = process.env.BUCKET_NAME_BIOMETRICS;
-const bucket = storage.bucket(bucketName);
+
+let storage;
+function getBucket() {
+    if (!bucketName) {
+        throw new Error(
+            'BUCKET_NAME_BIOMETRICS is not configured — biometric file storage is ' +
+            'unavailable. Set it and provide storageconfig.json to enable it.'
+        );
+    }
+    if (!storage) storage = new Storage({ keyFilename: 'storageconfig.json' });
+    return storage.bucket(bucketName);
+}
 
 const {QRCodeCanvas} = require('@loskir/styled-qr-code-node');
 const qrOptions = require('./qrOption.json');
@@ -174,7 +188,7 @@ class DepartmentController {
                 // Delete files with the specified prefix
                 async function deleteFiles(prefix) {
                     try {
-                        const [files] = await bucket.getFiles({ prefix });
+                        const [files] = await getBucket().getFiles({ prefix });
                         await Promise.all(files.map(file => file.delete()));
                     } catch (err) {
                         throw err;
@@ -593,7 +607,7 @@ class DepartmentController {
             const [userData] = await BiometricModel.getUserDetails(userId);  
             if(!userData) return sendResponse(res, 400, null, 'User not found', null);      
             let prefix = `${userData.organization_email}/${userId}.jpg`;
-            const [files] = await bucket.getFiles({ prefix }); 
+            const [files] = await getBucket().getFiles({ prefix }); 
             if (files.length === 0) {
                 console.log('No files found with the given prefix.');
             } else {
@@ -624,7 +638,7 @@ const uploadImage = (file, folderName) =>
 
         const { originalname, buffer } = file;
         try {
-            const blob = storage.bucket(bucketName).file(`${folderName}/${originalname.replace(/ /g, '_')}`);
+            const blob = getBucket().file(`${folderName}/${originalname.replace(/ /g, '_')}`);
             const blobStream = blob.createWriteStream({
                 resumable: false,
             });

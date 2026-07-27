@@ -5,7 +5,7 @@
         "autoUpdate": "0"
     },
     "screenshot": {
-        "frequencyPerHour": "60",
+        "frequencyPerHour": "9",
         "employeeAccessibility": "false",
         "employeeCanDelete": "false"
     },

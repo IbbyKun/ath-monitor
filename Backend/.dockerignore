@@ -1,0 +1,20 @@
+# Build context is Backend/ (services share ../config), so keep it lean.
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+**/sample.env
+**/npm-debug.log*
+# NOTE: do NOT exclude "**/logs" — several services keep *source* in directories
+# named logs (desktop/src/logs/Logger.js, admin/src/routes/v3/logs/). Excluding
+# log *files* by extension is enough.
+**/*.log
+**/public/uploads
+**/public/images
+**/.git
+**/.DS_Store
+**/coverage
+**/.nyc_output
+# Stray absolute-Windows-path log dir the productivity_report logger creates
+**/D:\\*
