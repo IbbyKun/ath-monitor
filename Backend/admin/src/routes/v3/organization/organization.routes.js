@@ -19,6 +19,7 @@ class Routes {
         this.myRoutes.post('/update-feature-new', OrganizationController.updateSettigFeatures);
         this.myRoutes.put('/update-org-details', OrganizationController.updateOrgnizationDetails);
         this.myRoutes.get('/organization-details', OrganizationController.orgDetails);
+        this.myRoutes.get('/org-chart', OrganizationController.getOrgChart);
         this.myRoutes.get('/upload-logo', OrganizationController.orgGetUploadLogo);
         this.myRoutes.post('/upload-logo', OrganizationController.orgUploadLogo);
         this.myRoutes.use('/app-names', new AppNameRoutes().getRouters());

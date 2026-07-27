@@ -276,8 +276,8 @@ export const Login = () => {
               </div>
             </form>
 
-            {/* ── Admin Login — centered ── */}
-            <div className="flex justify-center mt-4">
+            {/* ── Admin Login / Sign Up — centered ── */}
+            <div className="flex flex-col items-center gap-2 mt-4">
               <Button
                 type="button"
                 variant="ghost"
@@ -287,6 +287,18 @@ export const Login = () => {
               >
                 {t("auth_admin_login_question")}
               </Button>
+              <p className="text-[13px] text-[#7aadca]">
+                {t("auth_not_registered")}{" "}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-auto p-0 text-[13px] font-bold text-[#2079FD]
+                  hover:text-[#2079FD] hover:bg-transparent hover:underline"
+                  onClick={() => navigate("/signup")}
+                >
+                  {t("auth_sign_up")}
+                </Button>
+              </p>
             </div>
           </div>
           <span className="text-xs text-[#9bbdce]">© {new Date().getFullYear()} – EmpMonitor</span>

@@ -140,7 +140,10 @@ export default function TopHeader() {
 
             {/* Menu Items */}
             <div className="space-y-1">
-              <DropdownMenuItem className="py-2.5 px-3 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors group">
+              <DropdownMenuItem
+                className="py-2.5 px-3 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors group"
+                onClick={() => navigate("/admin/account-settings")}
+              >
                 <div className="flex items-center gap-3 w-full">
                   <div className="p-1.5 rounded-lg bg-blue-50 text-[#0066FF] group-hover:bg-blue-100 transition-colors">
                     <Settings className="h-4 w-4" />

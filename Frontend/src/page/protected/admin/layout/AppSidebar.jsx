@@ -61,13 +61,18 @@ const getMenuItems = (t, { showAddonFeatures = false } = {}) => [
     icon: Users,
     children: [
       { title: t("sidebar_employees_details"), url: "/admin/employee-details" },
+      { title: t("sidebar_pending_signups"), url: "/admin/pending-signups" },
+      { title: t("sidebar_org_chart"), url: "/admin/org-chart" },
       { title: t("sidebar_employee_comparison"), url: "/admin/comparison" },
       { title: t("sidebar_employee_attendance"), url: "/admin/attendance" },
       { title: t("sidebar_employee_insights"), url: "/admin/insights" },
       { title: t("sidebar_real_time_track"), url: "/admin/realtime" },
+      { title: t("sidebar_employee_notifications"), url: "/admin/notification" },
+      { title: t("sidebar_track_user_settings"), url: "/admin/track-user-settings" },
     ],
   },
   { title: t("timesheets"), url: "/admin/timesheets", icon: Clock },
+  { title: t("sidebar_timeline"), url: "/admin/timeline", icon: History },
   { title: t("sidebar_live_monitoring"), url: "/admin/livemonitoring", icon: Monitor },
   { title: t("sidebar_time_claim"), url: "/admin/timeclaim", icon: HandCoins },
   {
@@ -86,7 +91,7 @@ const getMenuItems = (t, { showAddonFeatures = false } = {}) => [
     children: [
       { title: t("sidebar_usb_detection"), url: "/admin/dlp/usb" },
       { title: t("sidebar_system_logs"), url: "/admin/dlp/systemlogs" },
-      // { title: t("sidebar_screenshot_logs"), url: "/admin/dlp/screenshotlogs" },
+      { title: t("sidebar_screenshot_logs"), url: "/admin/dlp/screenshotlogs" },
       { title: t("sidebar_email_activity_logs"), url: "/admin/dlp/emailactivitylogs" },
     ],
   },
@@ -110,6 +115,16 @@ const getMenuItems = (t, { showAddonFeatures = false } = {}) => [
       { title: t("alerts"), url: "/admin/behaviour/alerts" },
       { title: t("sidebar_alert_policies"), url: "/admin/behaviour/alertpolicies" },
       { title: t("sidebar_alert_notification"), url: "/admin/behaviour/alertnotification" },
+    ],
+  },
+  {
+    title: t("sidebar_field_workforce"),
+    icon: Smartphone,
+    children: [
+      { title: t("sidebar_task_clients"), url: "/admin/mobiletask/clientuser" },
+      { title: t("sidebar_task_details"), url: "/admin/mobiletask/task" },
+      // GPS location tracking intentionally disabled — not in use for now.
+      // { title: t("sidebar_task_geolocation"), url: "/admin/mobiletask/geolocation" },
     ],
   },
 ];

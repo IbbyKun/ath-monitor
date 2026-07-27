@@ -4,6 +4,7 @@ if (process.env.IS_DEBUGGING) console.log(__filename);
 const router = require('express').Router();
 const UserActivityController = require('./useractivity.controller');
 const PermissionsMiddleware = require('../permissions/permission.middlewares');
+const AuthMiddleware = require('../auth/services/auth.middleware');
 
 const { APIRateLimiter } = require("./SevenHoursRate.middleware");
 
@@ -16,6 +17,8 @@ class Routes {
     core() {
         // Adding all the routes here
         this.myRoutes.post('/user-register', UserActivityController.registerUser);
+        this.myRoutes.get('/pending-signups', AuthMiddleware.adminOnly, UserActivityController.pendingSignups);
+        this.myRoutes.post('/admit-pending-signups', AuthMiddleware.adminOnly, UserActivityController.admitPendingSignups);
         this.myRoutes.post('/user-profile-update', UserActivityController.updateProfile);
         this.myRoutes.post('/fetch-users', UserActivityController.userList);
         this.myRoutes.post('/fetch-employee', UserActivityController.userListCustom);

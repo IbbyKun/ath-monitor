@@ -226,6 +226,91 @@ class UserActivity {
         }
     }
 
+    // --- Self-serve signup admission (Pending Signups) ---------------------
+    // Pending pool is global (a signup has no org until admitted — see
+    // auth.service.js's `signup()`), so this list is not organization-scoped.
+
+    async pendingSignups(req, res) {
+        try {
+            const search = (req.query.email || '').trim();
+            const limit = parseInt(req.query.limit) || 50;
+            const skip = parseInt(req.query.skip) || 0;
+            const rows = await UserActivityModel.getPendingSignups(search, limit, skip);
+            return sendResponse(res, 200, rows, 'Pending signups', null);
+        } catch (err) {
+            Logger.error(`-V3---error-----${err}------${__filename}----`);
+            return sendResponse(res, 400, null, 'Error fetching pending signups', err.message);
+        }
+    }
+
+    async admitPendingSignups(req, res) {
+        try {
+            const { user_ids, department_id, location_id, role_id, shift_id } = req.body;
+            const { organization_id, user_id: created_by } = req.decoded;
+
+            if (!Array.isArray(user_ids) || user_ids.length === 0) {
+                return sendResponse(res, 400, null, 'user_ids must be a non-empty array', null);
+            }
+            if (!department_id || !location_id || !role_id) {
+                return sendResponse(res, 400, null, 'department_id, location_id and role_id are required', null);
+            }
+
+            const [scopeCheck] = await UserActivityModel.checkDepartmentLocationRoleBelongToOrg(department_id, location_id, role_id, organization_id);
+            if (!scopeCheck || !scopeCheck.dept_ok || !scopeCheck.loc_ok || !scopeCheck.role_ok) {
+                return sendResponse(res, 400, null, 'department_id, location_id or role_id does not belong to your organization', null);
+            }
+
+            const ids = _.unique(user_ids.map(id => parseInt(id)).filter(id => !isNaN(id)));
+            const usersById = {};
+            (await UserActivityModel.getUsersByIds(ids)).forEach(u => { usersById[u.id] = u; });
+
+            const [orgSetting] = await UserActivityModel.getOrganizationSeeting(organization_id);
+            let currentCount = orgSetting.current_count;
+
+            const admitted = [];
+            const failed = [];
+
+            for (const user_id of ids) {
+                const email = usersById[user_id] && usersById[user_id].email;
+                try {
+                    const casResult = await UserActivityModel.casAdmitUser(user_id);
+                    if (!casResult || casResult.affectedRows !== 1) {
+                        failed.push({ user_id, email, reason: 'Not pending / already admitted' });
+                        continue;
+                    }
+
+                    if (currentCount >= orgSetting.total_allowed_user_count) {
+                        await UserActivityModel.revertPendingStatus(user_id);
+                        failed.push({ user_id, email, reason: 'Seat limit reached' });
+                        continue;
+                    }
+
+                    const employee = await UserActivityModel.addUserToEmp(
+                        user_id, organization_id, department_id, location_id,
+                        null, shift_id || 0, null, 1, 1, orgSetting.rules, '', 0
+                    );
+                    await UserActivityModel.addRoleToUser(user_id, role_id, created_by);
+                    currentCount += 1;
+                    admitted.push({ user_id, employee_id: employee.insertId, email });
+                } catch (err) {
+                    await UserActivityModel.revertPendingStatus(user_id).catch(() => {});
+                    failed.push({ user_id, email, reason: err.message });
+                }
+            }
+
+            if (admitted.length > 0) {
+                await UserActivityModel.updateadminProperties({ organization_id, current_user_count: currentCount });
+                syncEmpCloudSeats(organization_id);
+                actionsTracker(req, `Admitted ${admitted.length} pending signup(s) into the organization.`, []);
+            }
+
+            return sendResponse(res, 200, { admitted, failed }, `Processed ${ids.length} pending signup(s)`, null);
+        } catch (err) {
+            Logger.error(`-V3---error-----${err}------${__filename}----`);
+            return sendResponse(res, 400, null, 'Error admitting pending signups', err.message);
+        }
+    }
+
     async userList(req, res) {
 
         const { organization_id, language } = req.decoded;

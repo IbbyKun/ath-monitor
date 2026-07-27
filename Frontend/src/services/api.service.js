@@ -3,6 +3,7 @@ import axios from 'axios';
 const BASE_URL = import.meta.env.VITE_API_URL || `https://test-monitor-api.empcloud.com/api/v3`;
 const SOCKET_BASE_URL = import.meta.env.VITE_SOCKET_URL || `wss://test-monitor-ws.empcloud.com`;
 const BACKEND_V4_URL = import.meta.env.VITE_BACKEND_V4_URL || `https://test-monitor-api.empcloud.com`;
+const STORE_LOGS_API_URL = import.meta.env.VITE_STORE_LOGS_API_URL || `https://test-monitor-api.empcloud.com/api/v1`;
 
 const authInstance = axios.create({
     baseURL: BASE_URL,
@@ -51,9 +52,28 @@ const loginApiInstance = axios.create({
     },
 });
 
+// store-logs-api (separate NestJS service, e.g. timesheet clock-in/out) —
+// shares the same Bearer token as apiInstance, since all services verify
+// against the same JWT_ACCESS_TOKEN_SECRET / Redis session store.
+const storeLogsInstance = axios.create({
+    baseURL: STORE_LOGS_API_URL,
+    headers: {
+        'Content-Type': 'application/json'
+    },
+});
+
+storeLogsInstance.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
 export default {
     authInstance: authInstance,
     apiInstance: apiInstance,
     SOCKET_BASE_URL,
-    loginApiInstance
+    loginApiInstance,
+    storeLogsInstance
 };

@@ -74,6 +74,24 @@ class AuthModel {
         return mySql.query(query);
     }
 
+    // Self-serve signup: creates a `users` row only, status=3 (Pending Admission).
+    // No `employees` row yet — an org admin must admit this person (see
+    // useractivity.model.js's addUserToEmp/addRoleToUser) before they belong
+    // to an org or can log in via /auth/user.
+    insertPendingUser(first_name, last_name, email, encryptedPassword) {
+        const query = `
+            INSERT INTO ${this.userTable}
+                (first_name, last_name, email, a_email, password, status, date_join)
+            VALUES (?, ?, ?, ?, ?, 3, CURDATE());
+        `;
+        return mySql.query(query, [first_name, last_name, email, email, encryptedPassword]);
+    }
+
+    getUserStatusByEmail(email) {
+        const query = `SELECT id, status FROM ${this.userTable} WHERE a_email = ? OR email = ? LIMIT 1`;
+        return mySql.query(query, [email, email]);
+    }
+
     insertOrganizationSetting(organization_id, rules) {
         const query = `
         INSERT INTO ${this.organizationSettingTable} 

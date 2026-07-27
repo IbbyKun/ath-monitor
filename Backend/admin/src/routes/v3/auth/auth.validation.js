@@ -64,6 +64,38 @@ class AuthValidator {
       .required();
   }
 
+  validateSignupParams() {
+    return Joi.object()
+      .keys({
+        first_name: Joi.string()
+          .required()
+          .trim()
+          .max(64)
+          .regex(/[$\(\)<>]/, {invert: true})
+          .error(err => {
+            return Common.hapijoiStringErrorMessage(err);
+          }),
+        last_name: Joi.string()
+          .required()
+          .trim()
+          .max(64)
+          .regex(/[$\(\)<>]/, {invert: true})
+          .error(err => {
+            return Common.hapijoiStringErrorMessage(err);
+          }),
+        email: Joi.string()
+          .required()
+          .trim()
+          .max(128)
+          .regex(/[$\(\)<>]/, {invert: true})
+          .error(err => {
+            return Common.hapijoiStringErrorMessage(err);
+          }),
+        password: Joi.string().required().trim().min(6).max(128),
+      })
+      .required();
+  }
+
   validateUserAccountSwitch() {
     return Joi.object()
       .keys({

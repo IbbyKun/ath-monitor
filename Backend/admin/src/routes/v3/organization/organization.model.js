@@ -29,6 +29,36 @@ class OrganizationModel extends BaseModel {
         return this.query(query, params);
     }
 
+    // Org chart data: every employee in the org, plus their "primary" manager
+    // (the most recently created `assigned_employees` row for them — the
+    // same table the existing "Assign Manager" bulk action / employee-details
+    // "View Assigned Managers" dialog already read/write). An employee with
+    // no assignment row is a root node (top of the org).
+    static getOrgChart(organization_id) {
+        const query = `
+            SELECT e.id AS employee_id, u.first_name, u.last_name, u.a_email AS email,
+                   od.name AS department, r.name AS role,
+                   mgr.to_assigned_id AS manager_employee_id
+            FROM employees e
+            JOIN users u ON u.id = e.user_id
+            LEFT JOIN organization_departments od ON od.id = e.department_id
+            LEFT JOIN user_role ur ON ur.user_id = e.user_id
+            LEFT JOIN roles r ON r.id = ur.role_id
+            LEFT JOIN (
+                SELECT ae1.employee_id, ae1.to_assigned_id
+                FROM assigned_employees ae1
+                INNER JOIN (
+                    SELECT employee_id, MAX(created_date) AS max_date
+                    FROM assigned_employees
+                    GROUP BY employee_id
+                ) latest ON latest.employee_id = ae1.employee_id AND latest.max_date = ae1.created_date
+            ) mgr ON mgr.employee_id = e.id
+            WHERE e.organization_id = ?
+            GROUP BY e.id
+        `;
+        return this.query(query, [organization_id]);
+    }
+
     static getOrganizationFeature(organization_id) {
         const query = 'SELECT id, organization_id, rules FROM organization_settings WHERE organization_id=?';
         return this.query(query, [organization_id]);

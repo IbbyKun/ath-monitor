@@ -74,6 +74,17 @@ class OrganizationController {
         }
     }
 
+    async getOrgChart(req, res) {
+        try {
+            const organization_id = req.decoded.organization_id;
+            actionsTracker(req, 'Organisation chart requested.');
+            const rows = await OrganizationModel.getOrgChart(organization_id);
+            return sendResponse(res, 200, rows, 'Org chart data', null);
+        } catch (err) {
+            return sendResponse(res, 400, null, 'Error fetching org chart', err.message);
+        }
+    }
+
     async getOrganizationFeature(req, res) {
         const organization_id = req.decoded.organization_id;
         const group_id = req.query.group_id || 0;

@@ -10,6 +10,10 @@ const eventService = require('./services/event.service');
  * @class AuthController
  */
 class AuthController {
+    async signup(req, res, next) {
+        return await authService.signup(req, res, next);
+    }
+
     async userAuth(req, res, next) {
         return await authService.userAuth(req, res, next);
     }

@@ -15,3 +15,11 @@ vendor
 *-audit.json
 audit.json
 package-lock.json
+
+# Locally generated shared secrets (JWT/crypto keys reused across services)
+.secrets/
+
+# Runtime log dirs the logger creates from an absolute Windows path when
+# NODE_ENV/log paths are misconfigured — never meant to be committed.
+Backend/**/D:\\*
+.audit.json

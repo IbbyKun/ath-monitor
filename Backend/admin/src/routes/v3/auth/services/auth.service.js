@@ -26,6 +26,42 @@ const speakeasy = require('speakeasy');
  * @class UserAuthIndex
  */
 class AuthService {
+  /**
+   * Public self-serve signup. Creates ONLY a `users` row (status=3, Pending
+   * Admission) — no org, no `employees` row. An org admin must admit the
+   * person (see useractivity.controller.js admitPendingSignups) before they
+   * belong to an org or can log in via /auth/user.
+   */
+  async signup(req, res, next) {
+    try {
+      let {first_name, last_name, email, password} = await validator.validateSignupParams().validateAsync(req.body);
+
+      const {encoded, error: encryptError} = passwordService.encrypt(password, process.env.CRYPTO_PASSWORD);
+      if (encryptError || !encoded) {
+        return res.status(500).json({code: 500, error: 'ServerError', message: 'Could not process signup.', data: null});
+      }
+
+      let insertResult;
+      try {
+        insertResult = await authModel.insertPendingUser(first_name, last_name, email, encoded);
+      } catch (err) {
+        if (err && (err.code === 'ER_DUP_ENTRY' || (err.message && err.message.includes('Duplicate entry')))) {
+          return res.status(400).json({code: 400, error: 'Duplicate', message: 'An account with this email already exists.', data: null});
+        }
+        throw err;
+      }
+
+      return res.status(200).json({
+        code: 200,
+        error: null,
+        message: 'Signup received. An administrator must admit you before you can log in.',
+        data: {user_id: insertResult.insertId, email, status: 'pending'},
+      });
+    } catch (error) {
+      return res.status(400).json({code: 400, error: 'Error in signup', message: error.message, data: null});
+    }
+  }
+
   async userAuth(req, res, next) {
     try {
       let {email, password, ip} = await validator.validateUserAuthParams().validateAsync(req.body);
@@ -35,7 +71,16 @@ class AuthService {
 
       const [userData] = await authModel.userWithAdminAndRole(email);
 
-      if (!userData) return res.status(400).json({code: 400, error: 'Not Found', message: 'User does not exists', data: null});
+      if (!userData) {
+        // userWithAdminAndRole INNER JOINs through `employees`, so a signed-up
+        // user who hasn't been admitted into an org yet (status=3) also lands
+        // here — check for that case to avoid telling them "does not exist".
+        const [rawUser] = await authModel.getUserStatusByEmail(email);
+        if (rawUser && rawUser.status === 3) {
+          return res.status(403).json({code: 403, error: 'Pending Admission', message: 'Your account is awaiting admission by an organization administrator.', data: null});
+        }
+        return res.status(400).json({code: 400, error: 'Not Found', message: 'User does not exists', data: null});
+      }
       if (userData.status == 2) return res.status(400).json({code: 400, error: 'Not Found', message: 'User suspended by admin', data: null});
       const userRoles = await authModel.roles(userData.id);
 
@@ -466,6 +511,12 @@ class AuthService {
           code: 200,
           data: accessToken,
           user_name: username,
+          // Identity fields — the Account Settings profile panel reads these
+          // from the stored session; without them it can only show the username.
+          email: email,
+          first_name: first_name,
+          last_name: last_name,
+          full_name: `${first_name || ''} ${last_name || ''}`.trim() || username,
           is_admin: adminJsonData.is_admin,
           is_manager: adminJsonData.is_manager,
           is_teamlead: adminJsonData.is_teamlead,

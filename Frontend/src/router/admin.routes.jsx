@@ -20,7 +20,6 @@ import { Timesheets }     from '../page/protected/admin/timesheets'
 import { Timeline }       from '../page/protected/admin/timeline'
 import { LiveMonitoring } from '../page/protected/admin/live-monitoring'
 import { TimeClaim }      from '../page/protected/admin/time-claim'
-import { Clients }        from '../page/protected/admin/clients'
 
 // Reports
 import ReportsDownload    from '../page/protected/admin/reports-download'
@@ -113,7 +112,6 @@ const AdminRoutes = () => {
       <Route path="/admin/timeline"                    element={<AdminProtectedRoute><Timeline /></AdminProtectedRoute>} />
       <Route path="/admin/livemonitoring"              element={<AdminProtectedRoute><LiveMonitoring /></AdminProtectedRoute>} />
       <Route path="/admin/timeclaim"                   element={<AdminProtectedRoute><TimeClaim /></AdminProtectedRoute>} />
-      <Route path="/admin/clients"                     element={<AdminProtectedRoute><Clients /></AdminProtectedRoute>} />
 
       {/* ── Reports ── */}
       <Route path="/admin/reports/download"            element={<AdminProtectedRoute><ReportsDownload /></AdminProtectedRoute>} />

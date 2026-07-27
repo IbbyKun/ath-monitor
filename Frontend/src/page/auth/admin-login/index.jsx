@@ -275,6 +275,7 @@ export const AdminLogin = () => {
                 variant="ghost"
                 className="h-auto p-0 text-[13px] font-bold text-[#2079FD]
                 hover:text-[#2079FD] hover:bg-transparent hover:underline"
+                onClick={() => navigate("/signup")}
               >
                 {t("auth_sign_up")}
               </Button>

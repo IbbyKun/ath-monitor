@@ -2152,7 +2152,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `date_join` date DEFAULT NULL,
   `address` varchar(512) DEFAULT NULL,
   `photo_path` text DEFAULT NULL,
-  `status` tinyint(4) NOT NULL DEFAULT 1 COMMENT '1- Active,2- In Active',
+  `status` tinyint(4) NOT NULL DEFAULT 1 COMMENT '1- Active,2- In Active,3- Pending Admission (signed up, no employees row yet)',
   `computer_name` varchar(512) DEFAULT NULL,
   `domain` varchar(128) DEFAULT NULL,
   `username` varchar(50) DEFAULT NULL COMMENT 'Computer Username',

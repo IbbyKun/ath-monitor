@@ -91,6 +91,49 @@ class UserActivityModel {
         return mySql.query(`INSERT INTO user_role (user_id, role_id, created_by) VALUES ?`, [values]);
     }
 
+    // --- Self-serve signup admission (Pending Signups) ---------------------
+
+    // Pending pool is intentionally global/unscoped (signups have no org yet),
+    // so this is not organization-scoped like the rest of this file's queries.
+    getPendingSignups(emailSearch, limit, skip) {
+        let query = `SELECT id, first_name, last_name, email, created_at FROM users WHERE status = 3`;
+        const params = [];
+        if (emailSearch) {
+            query += ` AND email LIKE ?`;
+            params.push(`%${emailSearch}%`);
+        }
+        query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        params.push(limit, skip);
+        return mySql.query(query, params);
+    }
+
+    getUsersByIds(ids) {
+        if (!ids.length) return Promise.resolve([]);
+        return mySql.query(`SELECT id, email, status FROM users WHERE id IN (?)`, [ids]);
+    }
+
+    // Atomic compare-and-swap: only flips pending (3) -> active (1) if it's
+    // still pending, so two concurrent admits of the same user can't both win.
+    casAdmitUser(user_id) {
+        return mySql.query(`UPDATE users SET status = 1 WHERE id = ? AND status = 3`, [user_id]);
+    }
+
+    // Rollback for casAdmitUser when a later step in the admit flow fails
+    // (e.g. seat limit reached) — puts the user back in the pending pool.
+    revertPendingStatus(user_id) {
+        return mySql.query(`UPDATE users SET status = 3 WHERE id = ?`, [user_id]);
+    }
+
+    checkDepartmentLocationRoleBelongToOrg(department_id, location_id, role_id, organization_id) {
+        return mySql.query(
+            `SELECT
+                (SELECT COUNT(*) FROM organization_departments WHERE id=? AND organization_id=? AND is_deleted=0) AS dept_ok,
+                (SELECT COUNT(*) FROM organization_locations WHERE id=? AND organization_id=?) AS loc_ok,
+                (SELECT COUNT(*) FROM roles WHERE id=? AND organization_id=?) AS role_ok`,
+            [department_id, organization_id, location_id, organization_id, role_id, organization_id]
+        );
+    }
+
     async userList(admin_id, location_id, department_id, role_id, name, skip, limit, to_assigned_id, sortColumn, sortOrder, start_date, end_date, status, emp_code, expand, shift_id = -1) {
         let column;
         let order;

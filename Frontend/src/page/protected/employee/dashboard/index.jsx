@@ -8,6 +8,7 @@ import {
 import useEmployeeSession from "../../../../sessions/employeeSession";
 import { usePermission } from "../../../../hooks/usePermission";
 
+import StartTimerCard     from "../../../../components/common/timer/StartTimerCard";
 import ProfileHeader      from "../../admin/employee-profile/ProfileHeader";
 import ProductivityTab    from "../../admin/employee-profile/ProductivityTab";
 import TimesheetsTab      from "../../admin/employee-profile/TimesheetsTab";
@@ -79,6 +80,9 @@ export default function EmployeeDashboard() {
     <div className="bg-slate-200 w-full min-h-screen">
       <div className="p-5">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-5">
+          {/* Manual clock-in/out */}
+          <StartTimerCard />
+
           {/* Profile header */}
           <ProfileHeader
             employee={employee}
