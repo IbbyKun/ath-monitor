@@ -1,0 +1,11 @@
+node_modules/
+dist/
+out/
+*.log
+.DS_Store
+
+# The repo root ignores package-lock.json for the backend services. The agent
+# is different: it is compiled into a binary that gets installed on employee
+# laptops, so an unpinned transitive dependency is a supply-chain risk on
+# software that takes screenshots. Pin it here.
+!package-lock.json

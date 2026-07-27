@@ -135,7 +135,11 @@ class AuthService {
         role_id: userData.role_id,
         role: userData.role,
         status: userData.status,
-        timezone: userData.timezone,
+        // The desktop agent carries this through to its activity documents,
+        // and Mongo rejects a null. An employee row created without a timezone
+        // would otherwise log in fine and then fail every single upload, so
+        // fall back to the organisation's zone rather than passing null on.
+        timezone: userData.timezone || userData.org_timezone || 'UTC',
         is_manager: is_manager,
         is_teamlead: is_teamlead,
         is_employee: is_employee,
@@ -331,7 +335,11 @@ class AuthService {
         role_id: userData.role_id,
         role: userData.role,
         status: userData.status,
-        timezone: userData.timezone,
+        // The desktop agent carries this through to its activity documents,
+        // and Mongo rejects a null. An employee row created without a timezone
+        // would otherwise log in fine and then fail every single upload, so
+        // fall back to the organisation's zone rather than passing null on.
+        timezone: userData.timezone || userData.org_timezone || 'UTC',
         is_manager: is_manager,
         weekday_start: userData.weekday_start,
         is_teamlead: is_teamlead,

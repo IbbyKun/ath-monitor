@@ -1,0 +1,75 @@
+appId: com.athgadlang.athmonitoragent
+productName: ATH Monitor Agent
+copyright: Copyright © ATH Gadlang
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - src/**/*
+  - package.json
+  - '!**/*.map'
+
+# get-windows ships a native helper binary (a .node addon on Windows, a compiled
+# Swift executable on macOS). Neither can be executed from inside an asar
+# archive, so they must stay unpacked on disk.
+asarUnpack:
+  - '**/node_modules/get-windows/**'
+
+# get-windows ships prebuilt N-API addons, and N-API is ABI-stable across Node
+# and Electron versions — there is nothing to rebuild. Leaving the default on
+# makes electron-builder invoke @electron/rebuild, which calls node-gyp, which
+# refuses to cross-compile and kills a Windows build started from macOS with
+# "node-gyp does not support cross-compiling native modules from source".
+# `npm run build:win` downloads the correct win32 binary first (see
+# scripts/fetch-win-native.mjs); this just stops the toolchain from throwing it
+# away and trying to build its own.
+npmRebuild: false
+
+# ── IMPORTANT: do not add a packer/obfuscator here ──────────────────────────
+# We ship unsigned (see BACKLOG.md "Phase 2 — DECIDED: no certificate"). An
+# unsigned binary that screenshots, autostarts and phones home already sits
+# close to Defender's spyware heuristics; UPX/obfuscation is the single biggest
+# additional driver of antivirus false positives and would tip it over.
+# Keep the output plain.
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  # No `certificateFile` / `signtool` on purpose — unsigned by decision.
+  #
+  # `signExecutable: false`, NOT `signAndEditExecutable: false`. The latter also
+  # disables resource editing, which leaves the .exe with the stock Electron
+  # icon and no version metadata at all — no product name, no company, no
+  # version. For a binary we are already shipping unsigned that is the wrong
+  # trade: an anonymous executable that screenshots and autostarts is exactly
+  # what heuristics are looking for, and it gives users nothing to recognise in
+  # the SmartScreen dialog. Keep the metadata, skip only the signature.
+  signExecutable: false
+
+nsis:
+  oneClick: false
+  perMachine: false          # per-user install => no UAC prompt, no admin needed
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ATH Monitor Agent
+
+mac:
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  category: public.app-category.productivity
+  # macOS is dev/test only for now — the pilot fleet is Windows.
+  identity: null
+  extendInfo:
+    NSScreenCaptureUsageDescription: >-
+      ATH Monitor Agent captures periodic screenshots of your screen while the
+      timer is running, so your work time can be reported to your employer.
+
+linux:
+  target:
+    - AppImage
+  category: Utility

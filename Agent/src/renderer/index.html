@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:;" />
+    <title>ATH Monitor Agent</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <!-- ── Sign in ─────────────────────────────────────────────────────── -->
+    <section id="view-login" class="view">
+        <header class="brand">
+            <div class="brand-mark" aria-hidden="true"></div>
+            <h1>ATH Monitor</h1>
+            <p class="brand-sub">Sign in with your employee account</p>
+        </header>
+
+        <form id="login-form" novalidate>
+            <label for="email">Email</label>
+            <input id="email" type="email" autocomplete="username" required
+                   placeholder="you@athgadlang.com" />
+
+            <label for="password">Password</label>
+            <input id="password" type="password" autocomplete="current-password" required />
+
+            <details id="advanced">
+                <summary>Server settings</summary>
+                <label for="server">Server address</label>
+                <input id="server" type="text" spellcheck="false" placeholder="https://monitor.example.com" />
+            </details>
+
+            <p id="login-error" class="error" role="alert" hidden></p>
+
+            <button id="login-btn" type="submit" class="primary">Sign in</button>
+        </form>
+    </section>
+
+    <!-- ── Timer ───────────────────────────────────────────────────────── -->
+    <section id="view-main" class="view" hidden>
+        <header class="topbar">
+            <div>
+                <p class="who" id="who">—</p>
+                <p class="muted" id="server-label">—</p>
+            </div>
+            <button id="logout-btn" class="link" type="button">Sign out</button>
+        </header>
+
+        <div class="clock">
+            <p class="clock-label" id="clock-label">Not tracking</p>
+            <p class="clock-time" id="clock-time">00:00:00</p>
+            <p class="muted" id="clock-detail">Press start when you begin work.</p>
+        </div>
+
+        <button id="toggle-btn" class="primary big" type="button">Start timer</button>
+
+        <dl class="stats">
+            <div><dt>Active</dt><dd id="stat-active">—</dd></div>
+            <div><dt>Idle</dt><dd id="stat-idle">—</dd></div>
+            <div><dt>Screenshots</dt><dd id="stat-shots">—</dd></div>
+            <div><dt>Pending upload</dt><dd id="stat-queued">—</dd></div>
+        </dl>
+
+        <p id="notice" class="notice" hidden></p>
+        <p id="main-error" class="error" role="alert" hidden></p>
+
+        <footer class="foot">
+            <span id="version">v—</span>
+            <span id="conn" class="conn">●</span>
+        </footer>
+    </section>
+
+    <script src="renderer.js"></script>
+</body>
+</html>

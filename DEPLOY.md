@@ -183,6 +183,46 @@ months. Capped at ~154 GB, the gap between MinIO-on-disk and Blob is about
 maintenance of a driver only you use. Not worth it. Spend that time on the
 desktop agent instead.
 
+### MinIO's `api_endpoint` must be reachable *by the browser*
+
+This one will cost you an afternoon if you meet it cold, so it is worth setting
+up correctly the first time.
+
+The portal does not stream screenshots through the API. It asks S3 for a
+**presigned URL** and hands that straight to an `<img>` tag, so the URL is
+loaded by the employee's browser, not by the server. The host in that URL comes
+from `api_endpoint` in the organisation's storage credentials
+(`organization_provider_credentials.creds`).
+
+Set `api_endpoint` to the internal Docker name and every thumbnail breaks:
+
+```jsonc
+// WRONG in any environment where a browser has to load the result.
+// The backend can resolve "minio"; nobody's laptop can.
+{ "api_endpoint": "http://minio:9000" }
+```
+
+The API still returns HTTP 200 with a perfectly valid, correctly signed link —
+fetching it from inside the Docker network gives you the JPEG. It only fails in
+the one place that matters. And you cannot rewrite the host afterwards, because
+SigV4 signs the `Host` header: change it and the signature is void.
+
+**The fix is one URL that resolves from both sides.** In production, put MinIO
+behind the same nginx on its own subdomain and use that everywhere:
+
+```jsonc
+{ "api_endpoint": "https://storage.yourdomain.com" }
+```
+
+The backend reaches it over the public name (fine — it resolves), the browser
+reaches it over the same name, and the signed host matches. Terminate TLS at
+nginx and proxy to `minio:9000` with the `Host` header preserved.
+
+Locally, the equivalent trick is to make `minio` resolve on the host too — add
+`127.0.0.1 minio` to `/etc/hosts` and keep `api_endpoint` as
+`http://minio:9000`, since port 9000 is already published. Without that, expect
+working screenshot *records* with broken thumbnails.
+
 ---
 
 ## Scaling: what is easy and what isn't

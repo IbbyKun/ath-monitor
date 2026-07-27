@@ -245,7 +245,7 @@ class UserActivity {
 
     async admitPendingSignups(req, res) {
         try {
-            const { user_ids, department_id, location_id, role_id, shift_id } = req.body;
+            const { user_ids, department_id, location_id, role_id, shift_id, timezone } = req.body;
             const { organization_id, user_id: created_by } = req.decoded;
 
             if (!Array.isArray(user_ids) || user_ids.length === 0) {
@@ -267,6 +267,14 @@ class UserActivity {
             const [orgSetting] = await UserActivityModel.getOrganizationSeeting(organization_id);
             let currentCount = orgSetting.current_count;
 
+            // employees.timezone must not be null. It is copied into the login
+            // session and from there onto every activity document the desktop
+            // agent writes, where Mongo requires it — a null here makes every
+            // upload fail with "Path `timezone` is required" long after the
+            // admission looked successful. Mirror registerUser: take it from
+            // the request if given, else inherit the organisation's.
+            const empTimezone = timezone || orgSetting.timezone || 'UTC';
+
             const admitted = [];
             const failed = [];
 
@@ -287,7 +295,7 @@ class UserActivity {
 
                     const employee = await UserActivityModel.addUserToEmp(
                         user_id, organization_id, department_id, location_id,
-                        null, shift_id || 0, null, 1, 1, orgSetting.rules, '', 0
+                        null, shift_id || 0, empTimezone, 1, 1, orgSetting.rules, '', 0
                     );
                     await UserActivityModel.addRoleToUser(user_id, role_id, created_by);
                     currentCount += 1;
