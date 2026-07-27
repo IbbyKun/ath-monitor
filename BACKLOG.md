@@ -43,11 +43,14 @@ the API contract is fully documented in the DTOs.*
 
 | # | Item | Pri | Est. | Notes |
 |---|---|---|---|---|
-| 2.0 | **Buy code-signing certificates** | 🔴⏱️ | 1–2 wks lead | **Start immediately — this is pure waiting time.** Windows OV ~$200–400/yr (EV ~$500 skips SmartScreen); Apple Developer $99/yr. Unsigned builds are blocked by Gatekeeper and flagged by SmartScreen. |
-| 2.1 | Electron v1: login, timer, screenshots, idle, active app + window title | 🔴 | 2–3 wks | Enough to compute real productive time for desktop apps (Excel etc.). |
-| 2.2 | v2: mouse/keyboard counts, **offline queue**, auto-update, auto-start on boot | 🟡 | 1–2 wks | Don't skip the offline queue — a wifi drop otherwise loses a whole afternoon. |
+| ~~2.0~~ | ~~Buy code-signing certificates~~ | — | — | **DECIDED: no certificate for the pilot.** Windows-only fleet, so the $99 Apple fee never applied. Laptops are *not* centrally managed, so the free Group-Policy route isn't available either — but for 10 users an unsigned install is workable. See 2.0a. Revisit before scaling past ~50 users. |
+| 2.0a | **Submit the binary to Microsoft as a false positive** | 🟡 | 30 min + few days | Free, at microsoft.com/wdsi/filesubmission. Do this as soon as the first build exists — it is the single most effective unsigned mitigation, and the turnaround is days. |
+| 2.0b | Document the SmartScreen bypass for pilot users | 🟡 | 15 min | "More info → Run anyway". Ship it with the install instructions so nobody assumes the app is malware. |
+| ~~2.1~~ | ~~Electron v1: login, timer, screenshots, idle, active app + window title~~ | ✅ | done | Built in `Agent/`. Verified end-to-end against the Docker stack: login, 5-min flush, screenshots to MinIO, clock-in upsert, app + window titles. See `Agent/README.md`. |
+| 2.2 | v2: mouse/keyboard counts, auto-update, auto-start on boot | 🟡 | 1–2 wks | The **offline queue shipped early in v1** — it was cheap and a wifi drop otherwise loses a whole afternoon. Remaining: per-key/click counts (`uiohook-napi`), `electron-updater`, launch-on-login. |
 | 2.3 | v3: browser extension for URLs | 🟢 | 1–2 wks | Without it you get "Chrome: 3h", not "Jira 2h / YouTube 1h". |
-| 2.4 | Repoint the "Download Agent" button at your own installer | 🟡 | 2 h | Endpoint and UI already exist; it currently serves a Qt binary you don't control. |
+| 2.4 | Repoint the "Download Agent" button at your own installer | 🟡 | 2 h | Endpoint and UI already exist; it currently serves a Qt binary you don't control. Now unblocked — 2.1 produces the installer. |
+| 2.5 | **Build the Windows installer on a Windows machine** | 🔴 | — | `get-windows` fetches a per-platform native addon at `npm install`. An installer cross-built from macOS starts fine and then silently reports no app data — no error, just empty columns. |
 
 **Deliberately out of scope:** keystroke *content* capture. It's a keylogger —
 captures passwords, triggers antivirus, carries real legal exposure. Productive time
@@ -64,6 +67,8 @@ doesn't need it, and `DISABLE_KEYSTROKE_FEATURE` already exists.
 | 3.2 | Orphaned pages with no menu link | 🟢 | 1 h | Reseller Dashboard, Reseller Settings, Addon Features — all work, reachable only by typing the URL. |
 | 3.3 | Delete 4 dead router files | 🟢 | 15 min | `src/router/{admin,nonadmin,employee,default}.routes.jsx` — never imported; one contradicts the live redirect target. |
 | 3.4 | `package-lock.json` drift across 6 services | 🟡 | 1 h | Lockfiles are out of sync with their `package.json` (e.g. `admin` declares `cors` + `file-stream-rotator`, drops `mysql`). Related to 0.1/0.2. |
+| ~~3.6~~ | ~~Admitted employees got a NULL `employees.timezone`~~ | ✅ | done | Found while testing the agent. Mongo rejects activity documents without a timezone, so an admitted user could log in fine and then have **every** upload fail with `Path 'timezone' is required`. `admitPendingSignups` now inherits the organisation's zone (and accepts an override); `userAuth` also falls back rather than passing null on. |
+| 3.7 | An organisation with no storage integration silently breaks screenshots | 🟡 | 2 h | Uploads return `Failed to retrieve cloud integration data`. Nothing in the admin UI warns that a new org has no storage configured — it only surfaces once an agent is running. Worth a setup check on the Storage page. |
 | 3.5 | Close PR #291 | 🟢 | 2 min | **Your action** — targets the upstream EmpCloud repo. Code is already merged into your fork's `main`. |
 
 ---
@@ -98,11 +103,29 @@ doesn't need it, and `DISABLE_KEYSTROKE_FEATURE` already exists.
 ## Critical path
 
 ```
-Phase 0 (1 day)  →  Phase 1 (1 day)  →  pilot running
-                 ↘
-                   Phase 2.0 certs (start NOW, 1–2 wks waiting)
-                   Phase 2.1 agent v1 (2–3 wks)  →  real monitoring data
+Phase 0 ✅ done  →  Phase 1 (1 day, needs VPS)  →  pilot platform running
+Phase 2.1 ✅ done ↗
 ```
 
-**Start the certificate purchase today** — it's the only item where waiting can't be
-compressed, and it gates the agent rollout regardless of when the code is finished.
+Both long poles are down. **The only thing blocking a pilot now is the VPS** —
+credentials for Hostinger KVM 2 plus a subdomain, and Phase 1 is about a day's
+work. The agent already runs against the stack and produces real data.
+
+Verified end-to-end on the local Docker stack (27 Jul 2026): sign in, 5-minute
+activity flush, screenshots to MinIO at ~95 KB each, clock-in upsert extending a
+single timesheet row, and app + window titles landing in Mongo. The offline
+queue was tested by stopping `store-logs-api` mid-session — 7 items queued,
+all delivered after recovery, with screenshots still filed under their capture
+time rather than their upload time.
+
+**The risk being carried instead:** on unmanaged Windows machines an unsigned app
+that screenshots, autostarts and phones home matches Defender's spyware heuristics.
+SmartScreen is only an annoyance (dismissible), but a Defender quarantine is silent
+and can strike days later after a definition update — the agent simply stops
+reporting and nobody knows why. Mitigations: 2.0a (false-positive submission),
+per-machine Defender exclusion during install, and **never pack or obfuscate the
+binary** — packers are the single biggest driver of AV false positives.
+
+Revisit the certificate decision if agents start going silent, or before rolling
+out beyond ~50 machines — hand-holding 500 people through SmartScreen and manual
+antivirus exclusions does not scale.

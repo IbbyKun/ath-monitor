@@ -125,6 +125,7 @@ class AuthModel {
             SELECT 
                 u.id, u.first_name, u.last_name, u.email, u.a_email, u.password, u.email_verified_at, u.contact_number, u.address, u.photo_path, u.status, u.date_join as begin_date,
                 e.emp_code, e.timezone, e.organization_id, e.id as employee_id,e.custom_tracking_rule,
+                o.timezone as org_timezone,
                 od.id as department_id, od.name as department,o.total_allowed_user_count,
                 ol.id as location_id, ol.name as location, e.room_id,
                 r.name as role, ur.role_id,o.language,o.weekday_start,s.data AS shift,
