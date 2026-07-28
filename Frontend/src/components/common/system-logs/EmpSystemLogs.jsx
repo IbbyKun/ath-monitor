@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React from "react"
 import { useTranslation } from "react-i18next";
 import { Search, Info, FileSpreadsheet, FileText } from "lucide-react"
 import PaginationComponent from "@/components/common/Pagination"
@@ -17,25 +17,26 @@ import EmpSystemLogsLogo from "@/assets/dlp/system-logs.svg"
 import { useSystemLogsStore } from "@/page/protected/admin/system-logs/systemLogsStore"
 import { useDlpFilters } from "@/hooks/useDlpFilters"
 import DateRangeCalendar from "@/components/common/elements/DateRangeCalendar"
-import { Checkbox } from "@/components/ui/checkbox"
 
-const EmpSystemLogs = () => {
+/**
+ * Shared table for system-log style reports.
+ *
+ * The Second Screen Activity page renders the same columns over a different
+ * log type, so the store and headings are props rather than hardcoded.
+ * `useStore` is a hook and must be called unconditionally — hence a default
+ * parameter rather than `props.store ?? useSystemLogsStore()`, which would
+ * break the rules of hooks the moment a caller passed one.
+ */
+const EmpSystemLogs = ({
+  useStore = useSystemLogsStore,
+  heading,
+  headingAccent,
+  description,
+  logo = EmpSystemLogsLogo,
+} = {}) => {
     const { t } = useTranslation();
-  const store = useSystemLogsStore()
+  const store = useStore()
   const { rows, totalDocs, locations, departments, employees, filters, loading, tableLoading } = store
-  const [selectedRows, setSelectedRows] = useState([])
-
-  const pageRows = rows
-  const toggleAll = () => {
-    setSelectedRows((prev) =>
-      prev.length === pageRows.length ? [] : pageRows.map((r) => r._id)
-    )
-  }
-  const toggleRow = (id) => {
-    setSelectedRows((prev) =>
-      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
-    )
-  }
 
   const {
     search, setSearch, handleDateRangeChange,
@@ -60,14 +61,15 @@ const EmpSystemLogs = () => {
       {/* Header */}
       <div className="flex items-center gap-1 mb-7">
         <div className="flex items-end gap-1 mr-2">
-          <img alt="system-logs" className="w-24 h-24" src={EmpSystemLogsLogo} />
+          <img alt="system-logs" className="w-24 h-24" src={logo} />
         </div>
         <div className="border-l-2 border-blue-500 pl-4">
           <h2 className="text-gray-800" style={{ fontSize: "21px", lineHeight: "18px" }}>
-            <span className="font-semibold">{t("systemLogs.title")} </span> {t("systemLogs.logs")}
+            <span className="font-semibold">{heading ?? t("systemLogs.title")} </span>
+            {headingAccent ?? t("systemLogs.logs")}
           </h2>
           <p className="text-xs text-gray-400 mt-1 max-w-sm leading-tight">
-            {t("systemLogs.description")}
+            {description ?? t("systemLogs.description")}
           </p>
         </div>
       </div>
@@ -139,25 +141,32 @@ const EmpSystemLogs = () => {
       <div className="rounded-2xl border border-slate-100 overflow-x-auto bg-slate-50">
         <Table className="min-w-[1000px] w-full">
           <TableHeader>
+            {/*
+              These must stay in step with the eight cells rendered per row
+              below. They previously did not: six headers sat above eight
+              cells, so Location appeared under "Event Date", Department under
+              "Event Time", and the last two columns ran past the header row
+              entirely. The leading checkbox is gone too — it selected rows
+              that had no checkboxes of their own and no bulk action to feed.
+            */}
             <TableRow className="bg-blue-50/80">
-              <TableHead className="w-10">
-                <Checkbox
-                  checked={
-                    pageRows.length > 0 &&
-                    selectedRows.length === pageRows.length
-                  }
-                  onCheckedChange={toggleAll}
-                  className="border-slate-300"
-                />
-              </TableHead>
               <TableHead className="text-xs font-semibold text-slate-700">
                 {t("screenshotLogs.employeeName")}
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-slate-700">
+                {t("usbDetection.employeeId")}
               </TableHead>
               <TableHead className="text-xs font-semibold text-slate-700">
                 {t("screenshotLogs.computer")}
               </TableHead>
               <TableHead className="text-xs font-semibold text-slate-700">
-                {t("systemLogs.eventDate")}
+                {t("location")}
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-slate-700">
+                {t("department")}
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-slate-700">
+                {t("title")}
               </TableHead>
               <TableHead className="text-xs font-semibold text-slate-700">
                 {t("systemLogs.eventTime")}

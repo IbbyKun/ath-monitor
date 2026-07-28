@@ -123,6 +123,25 @@ async function fetchFeatureStatus(token) {
     return (res && res.data) || null;
 }
 
+/**
+ * Report windows that were on screen without being worked in.
+ *
+ * These go to the system-log stream rather than into `appUsage`, because
+ * appUsage entries carry a start and end and the reporting side sums them:
+ * two windows claiming the same minute would inflate the productive-hours
+ * figure. Here each event is a point in time with no duration, so it is
+ * evidence and nothing more.
+ *
+ * `events` is [{ dataId, title, type, computer, description }].
+ */
+async function sendSystemLogs(token, events) {
+    return request('/api/v1/desktop/add-system-log', {
+        method: 'POST',
+        token,
+        json: { events },
+    });
+}
+
 /** Push one batch of activity. `payload` is { sign, data: [...] }. */
 async function sendActivity(token, payload) {
     return request('/api/v1/desktop/add-activity-log', {
@@ -182,6 +201,7 @@ module.exports = {
     logout,
     fetchFeatureStatus,
     sendActivity,
+    sendSystemLogs,
     uploadScreenshots,
     recordClock,
 };

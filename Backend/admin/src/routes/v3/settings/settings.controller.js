@@ -235,7 +235,13 @@ class Settings {
                             screenshots: 1
                         },
                         breakInMinute: 0,
-                        idleInMinute: 10,
+                        // 5 minutes: the desktop agent reads this as the
+                        // minimum *continuous* run of no input before any of
+                        // it is deducted. Keep it in step with
+                        // auth/default.settings.json and store-logs-api's
+                        // user-feature.service.ts, which all fed different
+                        // numbers (10 / 10 / 2) before.
+                        idleInMinute: 5,
                         trackingMode: 'unlimited',
                         tracking: {
                             unlimited: {

@@ -84,6 +84,7 @@ const getMenuItems = (t, { showAddonFeatures = false } = {}) => [
     children: [
       { title: t("sidebar_usb_detection"), url: "/admin/dlp/usb" },
       { title: t("sidebar_system_logs"), url: "/admin/dlp/systemlogs" },
+      { title: t("sidebar_second_screen"), url: "/admin/dlp/secondscreen" },
       { title: t("sidebar_screenshot_logs"), url: "/admin/dlp/screenshotlogs" },
       { title: t("sidebar_email_activity_logs"), url: "/admin/dlp/emailactivitylogs" },
     ],

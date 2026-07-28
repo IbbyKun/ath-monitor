@@ -14,6 +14,7 @@
 //
 // Anything that fails to upload goes to the disk queue and is retried.
 
+const os = require('os');
 const EventEmitter = require('events');
 const { powerMonitor } = require('electron');
 
@@ -23,9 +24,20 @@ const store = require('../store');
 const { CONFIG } = require('../config');
 const { captureAll } = require('./screenshots');
 const { getActiveWindow, getUnavailableReason } = require('./active-window');
+const { getBackgroundWindows } = require('./background-windows');
 
 /** Sample the focused window every Nth tick — see WINDOW_SAMPLE_TICKS below. */
 const WINDOW_SAMPLE_TICKS = 5;
+
+/**
+ * System-log category for "window seen on a non-focused display".
+ *
+ * The backend treats `type` as an opaque string and the portal filters on it,
+ * so this is a namespace we allocate from: 1–5 are agent status and USB
+ * events, 10 is app/web logs. Stored as a string because the Mongoose schema
+ * declares it as one, and the query side casts to match.
+ */
+const SYSTEM_LOG_TYPE_BACKGROUND_WINDOW = '11';
 
 class Tracker extends EventEmitter {
     constructor() {
@@ -132,6 +144,12 @@ class Tracker extends EventEmitter {
             breakSeconds: 0,
             /** @type {Array<{app,title,url,start,end}>} */
             segments: [],
+            /**
+             * Windows seen on non-focused displays, keyed "app|display".
+             * Counted in samples, not seconds — multiplied out at flush.
+             * @type {Map<string, {app: string, title: string, display: number, samples: number}>}
+             */
+            background: new Map(),
             ticks: 0,
         };
     }
@@ -159,6 +177,10 @@ class Tracker extends EventEmitter {
         // extra granularity.
         if (iv.ticks % WINDOW_SAMPLE_TICKS === 0) {
             this._sampleWindow().catch(() => { /* handled inside */ });
+        }
+
+        if (iv.ticks % CONFIG.BACKGROUND_SAMPLE_SEC === 0) {
+            this._sampleBackground().catch(() => { /* handled inside */ });
         }
 
         const elapsed = iv.activePerSecond.length;
@@ -235,6 +257,68 @@ class Tracker extends EventEmitter {
         });
     }
 
+    /**
+     * Note what is sitting on the other monitors. Cheap because it runs once a
+     * minute, and a no-op entirely on single-screen machines.
+     */
+    async _sampleBackground() {
+        const iv = this.interval;
+        if (!iv) return;
+
+        // A machine nobody is touching is not "watching something on the
+        // second screen" — it is just left on. Charging idle time as evidence
+        // would be unfair and noisy.
+        if (powerMonitor.getSystemIdleTime() >= this.idleMinRunSec) return;
+
+        const open = iv.segments[iv.segments.length - 1];
+        const focused = open && open.end === null
+            ? { app: open.app, title: open.title }
+            : null;
+
+        const windows = await getBackgroundWindows(focused);
+        for (const win of windows) {
+            // Keyed on app + display, not title: a browser retitles itself on
+            // every tab change, and "Chrome was on display 2 for an hour" is
+            // the useful statement, not sixty one-minute fragments.
+            const key = `${win.app}|${win.display}`;
+            const entry = iv.background.get(key);
+            if (entry) {
+                entry.samples += 1;
+                entry.title = win.title || entry.title;   // keep the latest
+            } else {
+                iv.background.set(key, { ...win, samples: 1 });
+            }
+        }
+    }
+
+    /**
+     * Turn accumulated background sightings into system-log events.
+     * Returns [] when there is nothing worth reporting.
+     */
+    _buildBackgroundEvents(iv, at) {
+        const events = [];
+        const computer = os.hostname();
+
+        for (const win of iv.background.values()) {
+            const seconds = win.samples * CONFIG.BACKGROUND_SAMPLE_SEC;
+            if (seconds < CONFIG.BACKGROUND_MIN_REPORT_SEC) continue;
+
+            const minutes = Math.round(seconds / 60);
+            events.push({
+                dataId: at.toISOString(),
+                title: win.app,
+                // Type 11 — a new system-log category. 1–5 and 10 are already
+                // taken by agent status, USB events and app/web logs.
+                type: SYSTEM_LOG_TYPE_BACKGROUND_WINDOW,
+                computer,
+                description:
+                    `On display ${win.display} for about ${minutes} min without being worked in` +
+                    (win.title ? ` — "${win.title}"` : ''),
+            });
+        }
+        return events;
+    }
+
     // ── flushing ────────────────────────────────────────────────────────────
 
     async _flush(at) {
@@ -246,12 +330,16 @@ class Tracker extends EventEmitter {
         if (open && open.end === null) open.end = elapsed;
 
         const payload = this._buildActivityPayload(iv, elapsed, at);
+        const backgroundEvents = this._buildBackgroundEvents(iv, at);
 
         // Start the next interval before awaiting the network, so a slow
         // upload doesn't create a gap in coverage.
         this._resetInterval(at);
 
         await this._send('activity', payload);
+        if (backgroundEvents.length) {
+            await this._send('system-logs', { events: backgroundEvents });
+        }
         await this._sendClock(this.session.startedAt, at);
     }
 
@@ -407,6 +495,8 @@ class Tracker extends EventEmitter {
                 return api.sendActivity(token, payload);
             case 'screenshots':
                 return api.uploadScreenshots(token, binaries, payload);
+            case 'system-logs':
+                return api.sendSystemLogs(token, payload.events);
             case 'clock':
                 return api.recordClock(token, payload);
             default:

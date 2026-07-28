@@ -23,7 +23,12 @@ export class UserFeatureService {
                 employeeCanDelete: false
             },
             breakInMinute: 30,
-            idleInMinute: 2,
+            // Minimum *continuous* run of no input before the desktop agent
+            // deducts any of it — and it then deducts the whole run, not just
+            // the part past this line. Matches the admin service's
+            // default.settings.json; the three defaults disagreed (10/10/2)
+            // until they were reconciled here.
+            idleInMinute: 5,
             trackingMode: 'unlimited',
             tracking: {
                 unlimited: {

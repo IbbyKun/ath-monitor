@@ -24,6 +24,25 @@ const CONFIG = {
     SAMPLE_INTERVAL_MS: 1000,
 
     /**
+     * How often, in seconds, to check what is sitting on the *other* monitors.
+     *
+     * Far less often than the focused window: enumerating every open window is
+     * heavier than reading the active one, and the question being answered
+     * ("was a film on the second screen this afternoon?") does not need
+     * five-second resolution. Each sample stands for this many seconds when
+     * the duration is reported.
+     */
+    BACKGROUND_SAMPLE_SEC: 60,
+
+    /**
+     * Ignore a background window unless it was seen for at least this long.
+     * Glancing at a second screen is not evidence of anything; keeping a film
+     * open for ten minutes is. Also stops the event stream filling with
+     * whatever was briefly dragged across a monitor.
+     */
+    BACKGROUND_MIN_REPORT_SEC: 120,
+
+    /**
      * How long a *continuous* run of no input must last before any of it is
      * treated as idle, in seconds.
      *

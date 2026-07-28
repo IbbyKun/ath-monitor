@@ -27,7 +27,7 @@
         "expiry": "2023-01-26T18:30:00.000Z"
     },
     "breakInMinute": "30",
-    "idleInMinute": "10",
+    "idleInMinute": "5",
     "timesheetIdleTime": "00:00",
     "trackingMode": "unlimited",
     "tracking": {

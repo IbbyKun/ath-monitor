@@ -32,6 +32,7 @@ import WebAppUsage             from './page/protected/admin/web-app-usage'
 // import SystemActivityLog       from './page/protected/admin/system-activity-log'
 import USBDetection            from './page/protected/admin/usb-detection'
 import SystemLogs              from './page/protected/admin/system-logs'
+import SecondScreenActivity    from './page/protected/admin/second-screen'
 import ScreenShotLogs          from './page/protected/admin/screenshot-logs'
 import EmailActivityLogs       from './page/protected/admin/email-activity-logs'
 // Disabled — placeholder page with no real data behind it yet.
@@ -123,6 +124,7 @@ function App() {
         {/* <Route path="/admin/reports/systemactivitylog"   element={<AdminProtectedRoute><SystemActivityLog /></AdminProtectedRoute>} /> */}
         <Route path="/admin/dlp/usb"                     element={<AdminProtectedRoute><USBDetection /></AdminProtectedRoute>} />
         <Route path="/admin/dlp/systemlogs"              element={<AdminProtectedRoute><SystemLogs /></AdminProtectedRoute>} />
+        <Route path="/admin/dlp/secondscreen"            element={<AdminProtectedRoute><SecondScreenActivity /></AdminProtectedRoute>} />
         <Route path="/admin/dlp/screenshotlogs"          element={<AdminProtectedRoute><ScreenShotLogs /></AdminProtectedRoute>} />
         <Route path="/admin/dlp/emailactivitylogs"       element={<AdminProtectedRoute><EmailActivityLogs /></AdminProtectedRoute>} />
         {/* <Route path="/admin/dlp/printlogs"               element={<AdminProtectedRoute><PrintLogs /></AdminProtectedRoute>} /> */}
