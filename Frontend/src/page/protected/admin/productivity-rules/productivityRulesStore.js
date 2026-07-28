@@ -310,13 +310,19 @@ export const useProductivityRulesStore = create((set, get) => ({
     openAddDomainDialog: () => set({ addDomainDialogOpen: true }),
     closeAddDomainDialog: () => set({ addDomainDialogOpen: false }),
 
-    addDomain: async ({ domain, departmentRules }) => {
-        if (!domain) return { success: false, message: "Domain is required" };
-        if (!isValidURL(domain)) return { success: false, message: "Invalid URL format" };
+    addDomain: async ({ domain, type = 2, departmentRules }) => {
+        if (!domain) {
+            return { success: false, message: type === 1 ? "Application name is required" : "Domain is required" };
+        }
+        // URL-shaped validation only applies to websites — "Microsoft Excel"
+        // is a perfectly good application name and would fail it.
+        if (type !== 1 && !isValidURL(domain)) {
+            return { success: false, message: "Invalid URL format" };
+        }
 
         set({ updating: true });
         try {
-            const result = await addNewDomainURL({ domain, departmentRules });
+            const result = await addNewDomainURL({ domain, type, departmentRules });
             if (result.success) {
                 set({ updating: false, successMsg: result.message, addDomainDialogOpen: false });
                 await get().fetchData();

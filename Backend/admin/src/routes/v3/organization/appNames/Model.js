@@ -5,6 +5,25 @@ const escapeRegExp = (text) => {
     return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 };
 
+/**
+ * Canonical form of an application or domain name.
+ *
+ * This is the single point of truth for it. Agent-reported names arrive here
+ * via upsert() below, and admin-entered names arrive via the productivity
+ * ranking screen — if the two normalised differently, an admin who typed
+ * "Microsoft Excel" before rollout would end up with a second, separate entry
+ * once the agent reported "microsoft excel", and their classification would
+ * appear to do nothing. Both paths must call this.
+ *
+ * @param {string} name
+ * @param {number|string} type 1 = application, 2 = domain
+ */
+const normalizeActivityName = (name, type) => (
+    +type === 1
+        ? String(name).toLowerCase().replace('.exe', '').trim()
+        : Common.extractHostname(String(name))
+);
+
 class Model {
     static search({keyword, type, limit, organization_id}) {
         return Promise.all([
@@ -30,9 +49,7 @@ class Model {
     }
 
     static async upsert({name, type, organization_id}) {
-        const preparedName = +type === 1 ?
-            name.toLowerCase().replace('.exe', '').trim()
-            : Common.extractHostname(name);
+        const preparedName = normalizeActivityName(name, type);
         const {_id: id} = (
             await OrgAppWebModel.findOne({name: preparedName, type, organization_id}).select('_id').lean()
         ) || (
@@ -46,4 +63,5 @@ module.exports.TYPES = {
     '1': 'Application',
     '2': 'Domain',
 };
+module.exports.normalizeActivityName = normalizeActivityName;
 module.exports.Model = Model;

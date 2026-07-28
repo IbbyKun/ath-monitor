@@ -484,8 +484,21 @@ class PRServiceClass {
         ]);
     }
 
-    async addUrl(organization_id, name) {
-        return await new OrgAppWeb({ name, type: 2, organization_id }).save();
+    /**
+     * Add an activity for classification before the agent has ever seen it.
+     *
+     * `type` used to be hardcoded to 2, so only websites could be added by
+     * hand — desktop applications had to appear in agent data first. Since
+     * classification only affects data recorded *after* it is set, that meant
+     * the first day of Excel usage was always miscounted as Neutral and could
+     * never be corrected. Callers now choose.
+     *
+     * @param {number} organization_id
+     * @param {string} name  already normalised by normalizeActivityName
+     * @param {number} type  1 = application, 2 = website
+     */
+    async addUrl(organization_id, name, type = 2) {
+        return await new OrgAppWeb({ name, type: +type === 1 ? 1 : 2, organization_id }).save();
     }
 
     /**

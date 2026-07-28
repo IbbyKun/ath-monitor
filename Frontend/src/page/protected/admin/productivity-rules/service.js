@@ -267,10 +267,13 @@ export const addProductivityRanking = async ({ name, type, status, departmentRul
 
 // ─── API: Add new domain URL ────────────────────────────────────────────────
 
-export const addNewDomainURL = async ({ domain, departmentRules }) => {
+export const addNewDomainURL = async ({ domain, type = 2, departmentRules }) => {
     try {
         const { data } = await apiService.apiInstance.post("/settings/add-url", {
             url: domain,
+            // 1 = desktop application, 2 = website. Defaults to website so any
+            // older caller that omits it behaves as before.
+            type,
             department_rules: departmentRules,
         });
 

@@ -15,6 +15,7 @@ const actionsTracker = require('../../services/actionsTracker');
 const { productivityMessages, productivityBulkUpdate, productivityBulkUpdatekeys } = require("../../../../utils/helpers/LanguageTranslate");
 const messageTranslate = require('../../../../utils/messageTranslation').translate;
 const DepartmentModel = require('../../department/Department.model')
+const { normalizeActivityName } = require('../../organization/appNames/Model');
 
 const maskingIP = require("../../../../utils/helpers/IPMasking");
 const configFile = require('../../../../../../config/config');
@@ -431,13 +432,20 @@ class ProductivityRanking {
 
     async addUrl(req, res, next) {
         try {
-            let { url, department_rules } = await PRValidator.addUrl().validateAsync(req.body);
+            let { url, type, department_rules } = await PRValidator.addUrl().validateAsync(req.body);
             const { organization_id, language } = req.decoded;
-            url = formateUrl(url);
+
+            // Normalise exactly as the ingest path does, or an admin who types
+            // "Microsoft Excel" today gets a separate entry from the agent's
+            // "microsoft excel" tomorrow, and their classification silently
+            // applies to nothing.
+            url = normalizeActivityName(url, type);
+            if (!url) return sendResponse(res, 400, null, 'Name cannot be empty.', null);
+
             const check_url = await PRService.getApplicationIdsByName({ organization_id, name: [url] });
             if (check_url.length !== 0) return sendResponse(res, 400, null, messageTranslate(productivityMessages, "15", language), null);
 
-            await PRService.addUrl(organization_id, url).then(async (result) => {
+            await PRService.addUrl(organization_id, url, type).then(async (result) => {
                 await PRService.updateProductivityRanking({ application_id: [result._id], department_rules })
                 return sendResponse(res, 200, { url, department_rules }, messageTranslate(productivityMessages, "17", language), null);
             }).catch(error => {
@@ -474,10 +482,14 @@ class ProductivityRanking {
                     const message = `Please check the ${notMatched}. having invalid inputs or header key not matched`;
                     return sendResponse(res, 400, null, message, message);
                 }
-                productivityFields = productivityFields.map(itr => ({ 
-                    Type: itr[`${headerName['Type']}`], 
-                    Activity: formateUrl(itr[`${headerName['Activity']}`] || ''), 
-                    status: itr[`${headerName['status']}`] 
+                // Activity is normalised further down, once Type is known —
+                // an application name and a URL need different treatment, and
+                // running formateUrl over "Microsoft Excel" here would have
+                // been the wrong rule applied blindly to both.
+                productivityFields = productivityFields.map(itr => ({
+                    Type: itr[`${headerName['Type']}`],
+                    Activity: String(itr[`${headerName['Activity']}`] || '').trim(),
+                    status: itr[`${headerName['status']}`]
                 }))
                 try {
                     await PRValidator.bulkUpdateProductivityRankingByFileBulkImport().validateAsync(productivityFields);
@@ -516,7 +528,13 @@ class ProductivityRanking {
                     } else {
                         item.status = 0; // Default to neutral
                     }
+
+                    // 'Application' rows were rejected outright before, so a
+                    // spreadsheet of desktop apps could not be imported.
+                    item.typeCode = item.Type === 'application' ? 1 : 2;
+                    item.Activity = normalizeActivityName(item.Activity, item.typeCode);
                 }
+                productivityFields = productivityFields.filter(item => item.Activity);
                 let newUrl = _.pluck(productivityFields, 'Activity')
                 let existingUrl = await PRService.getApplicationIdsByName({ organization_id, name: newUrl });
 
@@ -536,7 +554,7 @@ class ProductivityRanking {
                 // Add new URLs
                 for (const item of newUrls) {
                     try {
-                        await PRService.addUrl(organization_id, item.Activity, item.Type).then(async (result) => {
+                        await PRService.addUrl(organization_id, item.Activity, item.typeCode).then(async (result) => {
                             const updateData = { 
                                 application_id: [result._id], 
                                 department_rules: [ { department_id: 0, status: item.status, pre_request: 0 } ] 

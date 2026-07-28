@@ -59,6 +59,9 @@ class PRValidator {
     addUrl() {
         return Joi.object().keys({
             url: Joi.string().required().required(),
+            // 1 = application (Excel, Outlook), 2 = website. Defaults to 2 so
+            // existing callers that only ever sent a domain keep working.
+            type: Joi.number().valid(1, 2).default(2),
             department_rules: Joi.array().items(
                 Joi.object({
                     department_id: Joi.number().integer().positive().required().allow(0),
@@ -73,7 +76,10 @@ class PRValidator {
             Joi.object().keys({
                 status: Joi.string().trim().valid('Productive', 'Unproductive', 'Neutral').required().required(),
                 Activity: Joi.string().trim().required().required(),
-                Type: Joi.string().trim().valid('Website').required(),
+                // 'Application' was previously rejected, so a spreadsheet of
+                // desktop apps could not be imported at all — only websites.
+                // Case-insensitive because this comes from a hand-edited file.
+                Type: Joi.string().trim().lowercase().valid('website', 'application').required(),
             }).required()
         ).required()
     };
