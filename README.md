@@ -18,6 +18,7 @@ adapted for ATH Gadlang. Licensed AGPL-3.0, as upstream is.
 | File | What it covers |
 |---|---|
 | **`README.md`** (this file) | What the system is, how it fits together, how to run it |
+| **[`FEATURES.md`](FEATURES.md)** | Every feature in plain English, with what's ready, what needs setting up and what's turned off. **Start here if you are not a developer** |
 | **[`BACKLOG.md`](BACKLOG.md)** | Prioritised work, phase by phase. **The source of truth for what to do next.** Includes known bugs and decisions already made, with reasoning |
 | **[`DEPLOY.md`](DEPLOY.md)** | Hosting, sizing, cost, storage maths, and the deployment traps that cost real time |
 | **[`Agent/README.md`](Agent/README.md)** | The desktop agent: what it records, how to build it, and the three parts of the API contract that are easy to get wrong |
