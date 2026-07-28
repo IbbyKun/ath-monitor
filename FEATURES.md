@@ -100,8 +100,25 @@ minutes is the default and can be changed.
 | Feature | Status | What it means |
 |---|---|---|
 | Timesheets | ✅ | Hours per person per day, exportable. |
-| Attendance | ✅ | Who was in, who wasn't. |
+| Attendance and punctuality | ⚙️ | A month-at-a-glance grid marking each day Present, Absent, Half-day, **Late**, Overtime or Early-logout — with the minutes. Exports to Excel. Needs shifts set up first. |
+| Shifts with a lateness rule | ⚙️ | Per-day start and end times, a grace period before "late" counts (10 min by default), half-day threshold, overtime threshold and an early-logout allowance. |
 | Time claims | ✅ | Employees request forgotten time; managers approve or reject. |
+
+> ### Punctuality: what counts as "checking in"
+>
+> Someone's check-in time is **when they press Start on the desktop app**. The
+> system compares that against their shift's start time, allows the grace
+> period, and marks the day `L` with the number of minutes if they are past it.
+> The monthly grid then reads like `L/P` — late, but present.
+>
+> Nothing is recorded until shifts are configured and people are assigned to
+> one. Until then everyone is treated as having no fixed hours.
+>
+> **One thing to decide before using this for anything that affects people:**
+> the app does not yet start automatically when a laptop boots. Someone who
+> starts work on time but opens the app ten minutes later is recorded as ten
+> minutes late. If punctuality is going to be reported on, turn on auto-start
+> first — it is a known gap, listed in the backlog.
 
 ### Productivity
 

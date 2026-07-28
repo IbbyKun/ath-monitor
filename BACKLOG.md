@@ -50,7 +50,7 @@ the API contract is fully documented in the DTOs.*
 | 2.0a | **Submit the binary to Microsoft as a false positive** | 🟡 | 30 min + few days | Free, at microsoft.com/wdsi/filesubmission. Do this as soon as the first build exists — it is the single most effective unsigned mitigation, and the turnaround is days. |
 | 2.0b | Document the SmartScreen bypass for pilot users | 🟡 | 15 min | "More info → Run anyway". Ship it with the install instructions so nobody assumes the app is malware. |
 | ~~2.1~~ | ~~Electron v1: login, timer, screenshots, idle, active app + window title~~ | ✅ | done | Built in `Agent/`. Verified end-to-end against the Docker stack: login, 5-min flush, screenshots to MinIO, clock-in upsert, app + window titles. See `Agent/README.md`. |
-| 2.2 | v2: auto-update and auto-start on boot | 🟡 | 1 wk | The **offline queue shipped early in v1** — it was cheap and a wifi drop otherwise loses a whole afternoon. **Per-key/click counts dropped from scope:** typing and mouse already both count as activity, and distinguishing them was confirmed unnecessary, so `uiohook-napi` — a native dependency that would complicate the cross-build and add antivirus surface — is not worth adding. Remaining: `electron-updater`, launch-on-login. |
+| 2.2 | v2: auto-update and auto-start on boot | 🔴 | 1 wk | The **offline queue shipped early in v1** — it was cheap and a wifi drop otherwise loses a whole afternoon. **Per-key/click counts dropped from scope:** typing and mouse already both count as activity, and distinguishing them was confirmed unnecessary, so `uiohook-napi` — a native dependency that would complicate the cross-build and add antivirus surface — is not worth adding. Remaining: `electron-updater`, launch-on-login. **Raised to blocking if punctuality reporting is used:** check-in time is when the user presses Start, so somebody who begins work on time but opens the app ten minutes later is recorded as ten minutes late. Attendance already computes and stores lateness (see 5.1), which makes launch-on-login a fairness issue rather than a convenience. |
 | 2.3 | v3: browser extension for URLs | 🟢 | 1–2 wks | Without it you get "Chrome: 3h", not "Jira 2h / YouTube 1h". |
 | 2.4 | Repoint the "Download Agent" button at your own installer | 🟡 | 2 h | Endpoint and UI already exist; it currently serves a Qt binary you don't control. Now unblocked — 2.1 produces the installer. |
 | ~~2.5~~ | ~~Build the Windows installer on a Windows machine~~ | ✅ | done | **Not needed — it cross-builds from macOS/Linux.** `get-windows` publishes *prebuilt* Windows addons, so `scripts/fetch-win-native.mjs` just downloads one; `npmRebuild: false` stops node-gyp trying to compile it. Verified: a 96 MB NSIS installer with correct PE metadata, built on an Apple Silicon Mac. No VM, no Wine. |
@@ -63,6 +63,20 @@ the API contract is fully documented in the DTOs.*
 **Deliberately out of scope:** keystroke *content* capture. It's a keylogger —
 captures passwords, triggers antivirus, carries real legal exposure. Productive time
 doesn't need it, and `DISABLE_KEYSTROKE_FEATURE` already exists.
+
+---
+
+## Phase 5 — Attendance and punctuality (already built, needs configuring)
+
+*No code required. `TimeCalculator` already marks each day Present / Absent /
+Half-day / Late / Overtime / Early-logout with durations, and the Attendance
+page renders it as a monthly grid with Excel export.*
+
+| # | Item | Pri | Est. | Notes |
+|---|---|---|---|---|
+| 5.1 | Define shifts and assign employees | 🟡 | 1 h | Settings → Shift Management. Per-day start/end, `late_period` grace (10 min default), half-day threshold, overtime threshold, early-logout allowance. Shifts can be scoped per location. Employees carry a `shift_id`; without one they are treated as having no fixed hours and nothing is marked late. |
+| 5.2 | Decide the grace period with whoever owns the policy | 🟡 | — | The default is 10 minutes. This is a people decision, not a technical one, and it should be agreed before anyone sees a report about themselves. |
+| 5.3 | Turn on agent auto-start before reporting on punctuality | 🔴 | — | See 2.2. Measuring lateness against a manually-launched app penalises people for the tool's behaviour rather than their own. |
 
 ---
 
