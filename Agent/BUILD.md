@@ -109,6 +109,65 @@ application data at all, with no error anywhere. See below for why.
 
 ---
 
+## Verifying on Windows (copy-paste)
+
+Hand this to whoever has the Windows machine. It builds, checks the two things
+that fail silently, and tells you what to look for.
+
+```powershell
+# 1. Build
+git clone https://github.com/IbbyKun/ath-monitor.git
+cd ath-monitor\Agent
+npm install
+npm run build:win
+
+# 2. The native addon must be present, and must be the win32 one.
+#    If this prints nothing, the build is broken — see below.
+Get-ChildItem -Path dist\win-unpacked -Recurse -Filter *.node |
+    Select-Object -ExpandProperty FullName
+
+# 3. The installer should carry real version metadata, not blanks.
+(Get-Item "dist\ATH Monitor Agent Setup 0.1.0.exe").VersionInfo |
+    Format-List ProductName, CompanyName, FileDescription, FileVersion
+
+# 4. Size sanity check — expect roughly 90-100 MB.
+(Get-Item "dist\ATH Monitor Agent Setup 0.1.0.exe").Length / 1MB
+```
+
+**What good looks like**
+
+| Step | Expected |
+|---|---|
+| 2 | At least one path containing `napi-9-win32-unknown-x64\node-get-windows.node` |
+| 3 | `ATH Monitor Agent` / `ATH Gadlang` / a real version — not empty |
+| 4 | ~96 MB |
+
+Step 2 is the one that matters. A missing win32 addon does not fail the build,
+does not error at runtime, and produces an agent that tracks time and takes
+screenshots perfectly while reporting **no application names at all**. If it
+prints nothing, run `npm run fetch:win-native` and rebuild.
+
+Building *on* Windows normally makes this a non-issue — `npm install` fetches
+the right binary for the machine it runs on. The check exists because installers
+are often cross-built from a Mac, where it is not automatic.
+
+**Then actually run it** — packaging correctly is not the same as working:
+
+1. Run the installer. Expect "Windows protected your PC" → **More info** →
+   **Run anyway**. No admin password needed.
+2. Sign in with an **employee** account (admins have no `employee_id`).
+3. Press **Start**, work for two or three minutes, press **Stop**.
+4. Plug a USB stick in and pull it out while the timer is running.
+5. In the portal, check:
+   - the employee's profile shows **application names**, not just hours —
+     this is what proves step 2 worked;
+   - **DLP → USB Detection** lists the connect and disconnect.
+
+Report back: whether app names appeared, whether the USB events appeared, and
+anything Defender said.
+
+---
+
 ## Why cross-building works
 
 The only native dependency is `get-windows`, which reads the focused window's
