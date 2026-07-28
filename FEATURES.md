@@ -81,6 +81,7 @@ minutes is the default and can be changed.
 | Dashboard | ✅ | Today at a glance: who's working, who's idle, who's offline, total hours, most and least productive people. |
 | Employee comparison | ✅ | Put two or more people side by side. |
 | Employee insights | ✅ | Longer-term patterns per person. |
+| Real Time Track | ✅ | A live-updating list of who is working right now, what they are in, and for how long. Refreshes on its own — no live video, just current status. |
 | Timeline | ✅ | An hour-by-hour strip of someone's day. |
 
 ### Managing people
@@ -94,6 +95,7 @@ minutes is the default and can be changed.
 | Roles and permissions | ✅ | Control who can see what. |
 | Shifts | ✅ | Set working patterns, including multiple shifts. |
 | Employee notifications | ✅ | Send messages that appear in the app. |
+| Per-person monitoring settings | ✅ | Override the organisation's tracking rules for one employee or group — screenshot frequency, idle limit, what is tracked at all. Useful for a role that shouldn't be screenshotted. |
 
 ### Time and attendance
 
@@ -171,6 +173,7 @@ minutes is the default and can be changed.
 |---|---|---|
 | Screenshot gallery | ⚙️ | Browse screenshots by person, date and hour. Needs storage configured first. |
 | Screenshot logs | ✅ | A searchable, exportable list. |
+| Per-person history tabs | ✅ | On any employee's profile: **Web History** (sites visited), **App History** (programs used), plus their productivity, timesheets and screenshots. |
 | Second Screen Activity | ✅ | What was showing on other monitors while someone worked. Recorded as a note, **not** counted as time — see below. |
 
 Live screen viewing, screen recording and webcam capture have been **removed
@@ -238,7 +241,20 @@ collects them.
 | Monitoring controls | ✅ | Screenshot frequency, idle limit, what is and isn't tracked — per organisation or per person. |
 | Storage settings | ⚙️ | Where screenshots are kept, and how long. Currently set to delete after **40 days** to control cost. |
 | Account settings | ✅ | Your own profile and password. |
-| Language | ✅ | English. |
+| Localization | ✅ | The organisation's **timezone** — which decides what "today" means for every report, and the hours screenshots are filed under. Language is here too, currently English only. |
+
+---
+
+## Managers get a smaller version of the same thing
+
+There are three levels of access, not two. **Managers** (and team leads) sign in
+to the same portal as admins but see a reduced menu — their own team's
+dashboards, attendance, timesheets, insights, time claims, reports, USB
+detection and the settings screens, without the organisation-wide
+administration.
+
+Exactly what each role can reach is controlled under **Settings → Roles &
+Permissions**, so the split is adjustable rather than fixed.
 
 ---
 
@@ -273,6 +289,9 @@ These are known gaps, listed in [`BACKLOG.md`](BACKLOG.md) with estimates:
 - **Automatic updates and start-on-login** for the desktop app.
 - **Alerts for second-screen activity** — the information is recorded, but
   nobody is notified; someone has to open the report.
+- **Reseller Dashboard, Reseller Settings and Addon Features** exist and work
+  but have no menu entry, because they belong to the original product's
+  business model rather than yours. They are reachable only by typing the URL.
 
 ### Settled, so not on the list
 

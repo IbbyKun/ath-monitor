@@ -61,12 +61,15 @@ const getAllMenuItems = (t) => [
     feature: "timesheet",
   },
 
-  {
-    title: t("sidebar_live_monitor"),
-    url: "/non-admin/live",
-    icon: Monitor,
-    perm: "non_admin_live_monitoring",
-  },
+  // Hidden — the agent does not stream live screens, so this page is always
+  // empty. Removed from the admin menu at the same time; its route is
+  // commented out in App.jsx, so leaving the link here would have been dead.
+  // {
+  //   title: t("sidebar_live_monitor"),
+  //   url: "/non-admin/live",
+  //   icon: Monitor,
+  //   perm: "non_admin_live_monitoring",
+  // },
 
   {
     title: t("sidebar_time_claim"),
