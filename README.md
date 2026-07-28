@@ -21,7 +21,8 @@ adapted for ATH Gadlang. Licensed AGPL-3.0, as upstream is.
 | **[`FEATURES.md`](FEATURES.md)** | Every feature in plain English, with what's ready, what needs setting up and what's turned off. **Start here if you are not a developer** |
 | **[`BACKLOG.md`](BACKLOG.md)** | Prioritised work, phase by phase. **The source of truth for what to do next.** Includes known bugs and decisions already made, with reasoning |
 | **[`DEPLOY.md`](DEPLOY.md)** | Hosting, sizing, cost, storage maths, and the deployment traps that cost real time |
-| **[`Agent/README.md`](Agent/README.md)** | The desktop agent: what it records, how to build it, and the three parts of the API contract that are easy to get wrong |
+| **[`Agent/README.md`](Agent/README.md)** | The desktop agent: what it records, and the three parts of the API contract that are easy to get wrong |
+| **[`Agent/BUILD.md`](Agent/BUILD.md)** | Step-by-step: clone → installer → distribute. Written to be followed on a machine that has never seen the project |
 | `Backend/*/README.md` | Per-service notes inherited from upstream. Broadly accurate about endpoints; **ignore their install instructions**, which predate Docker |
 | `Backend/Installation.md`, `Backend/Readme.md` | Upstream pm2-based setup. Superseded by Docker — see below |
 | `QT/Readme.md` | Describes upstream's Qt agent. **That source is not in this repository.** See `Agent/` instead |

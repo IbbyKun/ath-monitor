@@ -16,10 +16,11 @@ maintained by the same team that maintains the web app.
 | Capability | How |
 |---|---|
 | Manual start/stop timer | Hubstaff-style. Nothing is recorded until the user presses Start. |
-| Worked vs. idle time | `powerMonitor.getSystemIdleTime()`, sampled once a second. See the idle rule below — it is not a simple threshold. |
+| Worked vs. idle time | `powerMonitor.getSystemIdleTime()`, sampled once a second. Keyboard **and** mouse both count as activity. See the idle rule below — it is not a simple threshold. |
 | Periodic screenshots | Electron `desktopCapturer`, every connected display, ~9/hour by default. |
 | Active application + window title | `get-windows`. Covers Excel and other desktop apps, not just browsers. |
 | Second-screen activity | Windows on a display other than the focused one, reported as evidence rather than as time. |
+| USB storage detection | Plug/unplug of USB **disks** during a session. Cannot false-flag a mouse, monitor or headset — see below. |
 | Survives going offline | Failed uploads are written to disk and retried. |
 | Runs in the background | Closing the window hides it to the tray; the timer keeps running. |
 
@@ -41,6 +42,25 @@ Because the threshold equals the flush interval, a qualifying run almost always
 spans two uploads. Crossing the line back-charges the whole run at once,
 clamped to the interval so nothing is double counted. Daily totals are exact;
 only which five-minute bucket the time lands in can shift.
+
+### USB storage detection
+
+Only **disks** are reported, never USB devices generally. The agent asks the OS
+for attached disks and narrows to those on a USB interface
+(`Win32_DiskDrive WHERE InterfaceType='USB'` on Windows, `diskutil list
+external physical` on macOS). A mouse, monitor, headset or keyboard is not a
+disk and therefore cannot appear in the result — there is no device-class
+heuristic to tune and no way for one to be mis-classified.
+
+Three details that keep it quiet:
+
+- The first poll of a session sets a baseline silently. A stick already plugged
+  in when the timer starts was not plugged in *during* work.
+- A failed enumeration returns `null`, not `[]`, and is skipped. Treating a
+  failure as "nothing attached" would fire a false disconnect for every device
+  and then a false connect on the next success.
+- Devices are keyed on serial number where the OS gives one, so replugging the
+  same stick is recognised and two identical sticks are not conflated.
 
 ### Second-screen activity
 
@@ -106,6 +126,10 @@ them to **Electron**, not to the agent.
 ---
 
 ## Building the installer
+
+> **Full runbook: [`BUILD.md`](BUILD.md)** — prerequisites, pointing it at
+> your server, verifying the build, distributing it, and the signing
+> situation. Follow that if you are building a release.
 
 ```bash
 npm run build:win     # dist/ATH Monitor Agent Setup <version>.exe
@@ -174,6 +198,7 @@ prefix, so the agent only ever needs one base URL.
 | Activity batch | `POST /api/v1/desktop/add-activity-log` |
 | Screenshots | `POST /api/v1/desktop/upload-screenshots` (multipart) |
 | Second-screen events | `POST /api/v1/desktop/add-system-log` (type `11`) |
+| USB storage events | `POST /api/v1/desktop/add-system-log` (types `2` connect / `3` disconnect) |
 | Clock in/out | `POST /api/v1/timesheet/record-clock-in` |
 
 All but the first take `Authorization: Bearer <token>`.

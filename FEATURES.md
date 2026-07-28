@@ -132,9 +132,11 @@ minutes is the default and can be changed.
 | Screenshot gallery | ⚙️ | Browse screenshots by person, date and hour. Needs storage configured first. |
 | Screenshot logs | ✅ | A searchable, exportable list. |
 | Second Screen Activity | ✅ | What was showing on other monitors while someone worked. Recorded as a note, **not** counted as time — see below. |
-| Live screen viewing | ⚠️ | The screen exists but shows nothing: our desktop app doesn't stream live video. |
-| Screen recording | ⚠️ | Same — not collected by our app. |
-| Webcam capture | ⚠️ | Same — not collected by our app. |
+
+Live screen viewing, screen recording and webcam capture have been **removed
+from the menus**. They were part of the original product but nothing collects
+that data, so the pages could only ever be empty. The code is still there and
+commented, should they ever be wanted.
 
 > ### How the second-monitor case is handled
 >
@@ -156,13 +158,29 @@ minutes is the default and can be changed.
 
 | Feature | Status | What it means |
 |---|---|---|
-| USB device detection | ⚠️ | Screen works; our desktop app doesn't detect USB devices yet. |
-| Clipboard logs | ⚠️ | Same — not collected yet. |
-| Email activity logs | ⚠️ | Same — not collected yet. |
-| Print logs | 🚫 | Turned off. |
-| System activity log | 🚫 | Turned off. |
+| USB storage detection | ✅ | Records when a USB drive is plugged in or pulled out during working time. **Storage only** — see below. |
 | Alerts and alert policies | ✅ | Rules that flag behaviour worth looking at. |
 | IP allow-listing | ✅ | Restrict access to known networks. |
+
+Clipboard logs, email activity logs, print logs and the system activity log
+have been **removed from the menus** for the same reason as above: nothing
+collects them.
+
+> ### USB detection will not flag your mouse
+>
+> The obvious way to build this — list USB devices and try to work out which
+> are storage — is exactly where false alarms come from. A docking station, a
+> webcam with a card slot or a phone on charge all confuse that approach.
+>
+> So the agent doesn't ask "what USB devices are attached?" It asks the
+> computer **"what disks are attached, and which of them came in over USB?"** A
+> mouse is never a disk. Neither is a monitor, a headset, a keyboard or a
+> webcam. They cannot appear in the answer, whatever they report themselves as,
+> so there is no guesswork to get wrong.
+>
+> Anything already plugged in when someone starts their timer is ignored — it
+> wasn't plugged in *during* work. Only genuine plug and unplug events while
+> the timer is running are recorded.
 
 ### Field workforce (mobile)
 
@@ -180,7 +198,7 @@ minutes is the default and can be changed.
 | Monitoring controls | ✅ | Screenshot frequency, idle limit, what is and isn't tracked — per organisation or per person. |
 | Storage settings | ⚙️ | Where screenshots are kept, and how long. Currently set to delete after **40 days** to control cost. |
 | Account settings | ✅ | Your own profile and password. |
-| Language | ✅ | English, Spanish, French, Portuguese, Indonesian and Arabic. |
+| Language | ✅ | English. |
 
 ---
 
@@ -212,8 +230,11 @@ These are known gaps, listed in [`BACKLOG.md`](BACKLOG.md) with estimates:
   between here and a live pilot.
 - **Website addresses.** The system records "Chrome — Jira" from the window
   title, not the actual link. Getting real URLs needs a browser add-on.
-- **Typing and click counts.** Activity is measured as active-versus-idle each
-  second, which is enough for a percentage but can't tell typing from clicking.
+- **Separating typing from clicking.** Both already count fully towards
+  activity — a second spent typing and a second spent using the mouse are
+  treated identically, so nobody is penalised for how they work. What the
+  system can't currently do is report *which* of the two it was, and there is
+  no plan to need that.
 - **Automatic updates and start-on-login** for the desktop app.
 - **Alerts for second-screen activity** — the information is recorded, but
   nobody is notified; someone has to open the report.

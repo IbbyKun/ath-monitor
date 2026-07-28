@@ -3,15 +3,23 @@ import { initReactI18next } from "react-i18next";
 
 import en from "./en.json";
 
-const LANG_LOADERS = {
-  es: () => import("./es.json"),
-  fr: () => import("./fr.json"),
-  ar: () => import("./ar.json"),
-  idn: () => import("./idn.json"),
-  pt: () => import("./pt.json"),
-};
+// English only for this deployment.
+//
+// The other bundles are still on disk and the lazy-loading machinery below
+// still works — restoring one is a matter of adding it back to this map and to
+// LANGUAGES in the localization page. Until then nothing may switch away from
+// English, including a stale value saved in localStorage or on the
+// organisation record: the picker no longer offers a way back, and Arabic
+// would also flip the whole layout to right-to-left with no way to undo it.
+const LANG_LOADERS = {};
 
-const savedLanguage = localStorage.getItem("appLanguage") || "en";
+/** The only language currently offered. See LANG_LOADERS above. */
+export const SUPPORTED_LANGUAGES = ["en"];
+export const isSupportedLanguage = (lang) => SUPPORTED_LANGUAGES.includes(lang);
+
+const savedLanguage = isSupportedLanguage(localStorage.getItem("appLanguage"))
+  ? localStorage.getItem("appLanguage")
+  : "en";
 
 i18n.use(initReactI18next).init({
   resources: {

@@ -25,6 +25,7 @@ const { CONFIG } = require('../config');
 const { captureAll } = require('./screenshots');
 const { getActiveWindow, getUnavailableReason } = require('./active-window');
 const { getBackgroundWindows } = require('./background-windows');
+const { listUsbStorage } = require('./usb-devices');
 
 /** Sample the focused window every Nth tick — see WINDOW_SAMPLE_TICKS below. */
 const WINDOW_SAMPLE_TICKS = 5;
@@ -38,6 +39,18 @@ const WINDOW_SAMPLE_TICKS = 5;
  * declares it as one, and the query side casts to match.
  */
 const SYSTEM_LOG_TYPE_BACKGROUND_WINDOW = '11';
+
+/**
+ * System-log categories for USB storage.
+ *
+ * The portal's USB Detection page filters on types 2–5, which upstream never
+ * documented anywhere in this repository — no legend, no enum, no comment. Our
+ * agent is now the only producer, so these two are defined here and 4–5 are
+ * left unclaimed for the file-transfer events upstream presumably used them
+ * for.
+ */
+const SYSTEM_LOG_TYPE_USB_CONNECTED = '2';
+const SYSTEM_LOG_TYPE_USB_DISCONNECTED = '3';
 
 class Tracker extends EventEmitter {
     constructor() {
@@ -56,6 +69,16 @@ class Tracker extends EventEmitter {
         // because a run routinely spans a flush boundary — the threshold is
         // as long as the interval itself.
         this.idleRunCharged = false;
+
+        /**
+         * USB storage seen at the last poll, as id -> label. `null` means we
+         * have not successfully enumerated yet, which is distinct from "none
+         * attached": the first successful poll must establish a baseline
+         * silently, or every stick already plugged in when the timer starts
+         * would be reported as a fresh insertion.
+         * @type {Map<string, string>|null}
+         */
+        this.usbSeen = null;
     }
 
     // ── lifecycle ───────────────────────────────────────────────────────────
@@ -87,6 +110,10 @@ class Tracker extends EventEmitter {
         };
         this.screenshotCount = 0;
         this.idleRunCharged = false;
+        // Re-baseline USB each session. Anything plugged or unplugged while
+        // the timer was off happened outside work and is not an event; without
+        // this reset the first poll of a new session would report it as one.
+        this.usbSeen = null;
 
         // Persisted so a crash mid-session can still be closed out on next
         // launch (see recoverInterruptedSession).
@@ -158,8 +185,10 @@ class Tracker extends EventEmitter {
         const iv = this.interval;
         if (!iv) return;
 
-        // getSystemIdleTime() is seconds since the last keyboard/mouse input,
-        // OS-wide. It reports the length of the *current* run of inactivity,
+        // getSystemIdleTime() is seconds since the last human input of *any*
+        // kind — keyboard, mouse movement, clicks, scrolling, trackpad — so
+        // typing and mousing both keep someone active. It reports the length
+        // of the *current* run of inactivity,
         // which is exactly what the idle rule needs and, usefully, survives
         // flush boundaries without us having to track the run's start.
         const idle = powerMonitor.getSystemIdleTime();
@@ -181,6 +210,10 @@ class Tracker extends EventEmitter {
 
         if (iv.ticks % CONFIG.BACKGROUND_SAMPLE_SEC === 0) {
             this._sampleBackground().catch(() => { /* handled inside */ });
+        }
+
+        if (iv.ticks % CONFIG.USB_SAMPLE_SEC === 0) {
+            this._sampleUsb().catch(() => { /* handled inside */ });
         }
 
         const elapsed = iv.activePerSecond.length;
@@ -292,6 +325,64 @@ class Tracker extends EventEmitter {
     }
 
     /**
+     * Poll for USB storage and report anything that appeared or disappeared.
+     *
+     * Sent immediately rather than batched to the flush: a stick plugged in
+     * and pulled out inside five minutes is precisely the event worth knowing
+     * about, and holding it back risks losing it if the session ends first.
+     */
+    async _sampleUsb() {
+        if (!this.isRunning) return;
+
+        const devices = await listUsbStorage();
+
+        // null means the enumeration itself failed. Leave the baseline alone —
+        // treating a failure as an empty list would report every attached
+        // device as unplugged, and then as re-plugged on the next success.
+        if (devices === null) return;
+
+        const current = new Map(devices.map((d) => [d.id, d.label]));
+
+        // First successful poll establishes the baseline without reporting.
+        // Whatever was already plugged in when the timer started was not
+        // plugged in *during* work, so it is not an event.
+        if (this.usbSeen === null) {
+            this.usbSeen = current;
+            return;
+        }
+
+        const events = [];
+        const at = new Date().toISOString();
+        const computer = os.hostname();
+
+        for (const [id, label] of current) {
+            if (!this.usbSeen.has(id)) {
+                events.push({
+                    dataId: at,
+                    title: label,
+                    type: SYSTEM_LOG_TYPE_USB_CONNECTED,
+                    computer,
+                    description: `USB storage device connected: ${label}`,
+                });
+            }
+        }
+        for (const [id, label] of this.usbSeen) {
+            if (!current.has(id)) {
+                events.push({
+                    dataId: at,
+                    title: label,
+                    type: SYSTEM_LOG_TYPE_USB_DISCONNECTED,
+                    computer,
+                    description: `USB storage device disconnected: ${label}`,
+                });
+            }
+        }
+
+        this.usbSeen = current;
+        if (events.length) await this._send('system-logs', { events });
+    }
+
+    /**
      * Turn accumulated background sightings into system-log events.
      * Returns [] when there is nothing worth reporting.
      */
@@ -392,12 +483,19 @@ class Tracker extends EventEmitter {
                 // length, which would be nonsense to the reporting side.
                 breakInSeconds: Math.min(iv.breakSeconds, elapsed),
 
-                // v1 has no input hooks, so we cannot separate clicks from
-                // keypresses — uiohook-napi is backlog 2.2. What we do have is
-                // a genuine per-second active/idle signal from the OS, and it
-                // is reported in `mouseMovements` because that is the field
-                // the portal's activity percentage reads. The three counters
-                // we cannot measure stay honestly at zero.
+                // **Typing and mouse both count as activity.**
+                // getSystemIdleTime() resets on any human input the OS sees —
+                // key presses, mouse moves, clicks, scrolling, trackpad — so a
+                // second spent typing and a second spent clicking are both
+                // recorded as active. Nobody is penalised for working in a way
+                // that favours one over the other.
+                //
+                // What we cannot do is say *which* it was: that needs a
+                // low-level input hook (uiohook-napi, backlog 2.2). Since the
+                // split is not needed, the combined signal goes into
+                // `mouseMovements` — the field the portal's activity
+                // percentage actually reads — and the three counters we cannot
+                // honestly measure stay at zero rather than being invented.
                 clicksCount: 0,
                 keysCount: 0,
                 fakeActivitiesCount: 0,

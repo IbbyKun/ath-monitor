@@ -66,7 +66,8 @@ const getMenuItems = (t, { showAddonFeatures = false } = {}) => [
   },
   { title: t("timesheets"), url: "/admin/timesheets", icon: Clock },
   { title: t("sidebar_timeline"), url: "/admin/timeline", icon: History },
-  { title: t("sidebar_live_monitoring"), url: "/admin/livemonitoring", icon: Monitor },
+  // Hidden — the agent does not stream live screens, so this page is always empty.
+  // { title: t("sidebar_live_monitoring"), url: "/admin/livemonitoring", icon: Monitor },
   { title: t("sidebar_time_claim"), url: "/admin/timeclaim", icon: HandCoins },
   {
     title: t("reports"),
@@ -83,10 +84,12 @@ const getMenuItems = (t, { showAddonFeatures = false } = {}) => [
     icon: ShieldAlert,
     children: [
       { title: t("sidebar_usb_detection"), url: "/admin/dlp/usb" },
-      { title: t("sidebar_system_logs"), url: "/admin/dlp/systemlogs" },
+      // Hidden — clipboard activity is not collected by the agent.
+      // { title: t("sidebar_system_logs"), url: "/admin/dlp/systemlogs" },
       { title: t("sidebar_second_screen"), url: "/admin/dlp/secondscreen" },
       { title: t("sidebar_screenshot_logs"), url: "/admin/dlp/screenshotlogs" },
-      { title: t("sidebar_email_activity_logs"), url: "/admin/dlp/emailactivitylogs" },
+      // Hidden — email activity is not collected by the agent.
+      // { title: t("sidebar_email_activity_logs"), url: "/admin/dlp/emailactivitylogs" },
     ],
   },
   {

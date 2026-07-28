@@ -22,7 +22,8 @@ import EmployeeProfile         from './page/protected/admin/employee-profile'
 import TrackUserSettings       from './page/protected/admin/track-user-settings'
 import { Timesheets }          from './page/protected/admin/timesheets'
 import { Timeline }            from './page/protected/admin/timeline'
-import { LiveMonitoring }      from './page/protected/admin/live-monitoring'
+// Hidden — the agent does not stream live screens; the page would be empty.
+// import { LiveMonitoring }      from './page/protected/admin/live-monitoring'
 import { TimeClaim }           from './page/protected/admin/time-claim'
 import ReportsDownload         from './page/protected/admin/reports-download'
 import ProductivityReport      from './page/protected/admin/productivity-report'
@@ -31,10 +32,13 @@ import WebAppUsage             from './page/protected/admin/web-app-usage'
 // Disabled — placeholder page with no real data behind it yet.
 // import SystemActivityLog       from './page/protected/admin/system-activity-log'
 import USBDetection            from './page/protected/admin/usb-detection'
-import SystemLogs              from './page/protected/admin/system-logs'
+// Hidden — clipboard logs are not collected by the agent.
+// (The EmpSystemLogs component it used is still shared by Second Screen Activity.)
+// import SystemLogs              from './page/protected/admin/system-logs'
 import SecondScreenActivity    from './page/protected/admin/second-screen'
 import ScreenShotLogs          from './page/protected/admin/screenshot-logs'
-import EmailActivityLogs       from './page/protected/admin/email-activity-logs'
+// Hidden — email activity is not collected by the agent.
+// import EmailActivityLogs       from './page/protected/admin/email-activity-logs'
 // Disabled — placeholder page with no real data behind it yet.
 // import PrintLogs               from './page/protected/admin/print-logs'
 import LocationDepartment      from './page/protected/admin/location-department'
@@ -62,13 +66,13 @@ import NonAdminEmployeeAttendance from './page/protected/non-admin/employee-atte
 import NonAdminEmployeeInsights   from './page/protected/non-admin/employee-insights'
 import NonAdminTimesheets         from './page/protected/non-admin/timesheets'
 import NonAdminTimeClaim          from './page/protected/non-admin/time-claim'
-import NonAdminLiveMonitoring     from './page/protected/non-admin/live-monitoring'
+// import NonAdminLiveMonitoring     from './page/protected/non-admin/live-monitoring'
 import NonAdminReportsDownload    from './page/protected/non-admin/reports-download'
 import NonAdminProductivityReport from './page/protected/non-admin/productivity-report'
 import NonAdminAutoEmailReport    from './page/protected/non-admin/auto-email-report'
 import NonAdminWebAppUsage        from './page/protected/non-admin/web-app-usage'
 import NonAdminUSBDetection       from './page/protected/non-admin/usb-detection'
-import NonAdminEmailActivityLogs  from './page/protected/non-admin/email-activity-logs'
+// import NonAdminEmailActivityLogs  from './page/protected/non-admin/email-activity-logs'
 import NonAdminLocationDepartment from './page/protected/non-admin/location-department'
 import NonAdminStorageTypes       from './page/protected/non-admin/storage-types'
 import NonAdminProductivityRules  from './page/protected/non-admin/productivity-rules'
@@ -115,7 +119,10 @@ function App() {
         <Route path="/admin/track-user-settings"         element={<AdminProtectedRoute><TrackUserSettings /></AdminProtectedRoute>} />
         <Route path="/admin/timesheets"                  element={<AdminProtectedRoute><Timesheets /></AdminProtectedRoute>} />
         <Route path="/admin/timeline"                    element={<AdminProtectedRoute><Timeline /></AdminProtectedRoute>} />
-        <Route path="/admin/livemonitoring"              element={<AdminProtectedRoute><LiveMonitoring /></AdminProtectedRoute>} />
+        {/* Hidden: the desktop agent does not collect this data, so the page
+            would always be empty. Route and component are intact — uncomment
+            if the agent ever gains the capability. */}
+        {/* <Route path="/admin/livemonitoring"              element={<AdminProtectedRoute><LiveMonitoring /></AdminProtectedRoute>} /> */}
         <Route path="/admin/timeclaim"                   element={<AdminProtectedRoute><TimeClaim /></AdminProtectedRoute>} />
         <Route path="/admin/reports/download"            element={<AdminProtectedRoute><ReportsDownload /></AdminProtectedRoute>} />
         <Route path="/admin/reports/productivity"        element={<AdminProtectedRoute><ProductivityReport /></AdminProtectedRoute>} />
@@ -123,10 +130,16 @@ function App() {
         <Route path="/admin/reports/webappusage"         element={<AdminProtectedRoute><WebAppUsage /></AdminProtectedRoute>} />
         {/* <Route path="/admin/reports/systemactivitylog"   element={<AdminProtectedRoute><SystemActivityLog /></AdminProtectedRoute>} /> */}
         <Route path="/admin/dlp/usb"                     element={<AdminProtectedRoute><USBDetection /></AdminProtectedRoute>} />
-        <Route path="/admin/dlp/systemlogs"              element={<AdminProtectedRoute><SystemLogs /></AdminProtectedRoute>} />
+        {/* Hidden: the desktop agent does not collect this data, so the page
+            would always be empty. Route and component are intact — uncomment
+            if the agent ever gains the capability. */}
+        {/* <Route path="/admin/dlp/systemlogs"              element={<AdminProtectedRoute><SystemLogs /></AdminProtectedRoute>} /> */}
         <Route path="/admin/dlp/secondscreen"            element={<AdminProtectedRoute><SecondScreenActivity /></AdminProtectedRoute>} />
         <Route path="/admin/dlp/screenshotlogs"          element={<AdminProtectedRoute><ScreenShotLogs /></AdminProtectedRoute>} />
-        <Route path="/admin/dlp/emailactivitylogs"       element={<AdminProtectedRoute><EmailActivityLogs /></AdminProtectedRoute>} />
+        {/* Hidden: the desktop agent does not collect this data, so the page
+            would always be empty. Route and component are intact — uncomment
+            if the agent ever gains the capability. */}
+        {/* <Route path="/admin/dlp/emailactivitylogs"       element={<AdminProtectedRoute><EmailActivityLogs /></AdminProtectedRoute>} /> */}
         {/* <Route path="/admin/dlp/printlogs"               element={<AdminProtectedRoute><PrintLogs /></AdminProtectedRoute>} /> */}
         <Route path="/admin/settings/location"           element={<AdminProtectedRoute><LocationDepartment /></AdminProtectedRoute>} />
         <Route path="/admin/settings/storage"            element={<AdminProtectedRoute><StorageTypes /></AdminProtectedRoute>} />
@@ -155,13 +168,19 @@ function App() {
         <Route path="/non-admin/insights"                element={<NonAdminProtectedRoute><NonAdminEmployeeInsights /></NonAdminProtectedRoute>} />
         <Route path="/non-admin/timesheets"              element={<NonAdminProtectedRoute><NonAdminTimesheets /></NonAdminProtectedRoute>} />
         <Route path="/non-admin/time-claim"              element={<NonAdminProtectedRoute><NonAdminTimeClaim /></NonAdminProtectedRoute>} />
-        <Route path="/non-admin/live"                    element={<NonAdminProtectedRoute><NonAdminLiveMonitoring /></NonAdminProtectedRoute>} />
+        {/* Hidden: the desktop agent does not collect this data, so the page
+            would always be empty. Route and component are intact — uncomment
+            if the agent ever gains the capability. */}
+        {/* <Route path="/non-admin/live"                    element={<NonAdminProtectedRoute><NonAdminLiveMonitoring /></NonAdminProtectedRoute>} /> */}
         <Route path="/non-admin/reports"                 element={<NonAdminProtectedRoute><NonAdminReportsDownload /></NonAdminProtectedRoute>} />
         <Route path="/non-admin/reports/productivity"    element={<NonAdminProtectedRoute><NonAdminProductivityReport /></NonAdminProtectedRoute>} />
         <Route path="/non-admin/reports/autoemail"       element={<NonAdminProtectedRoute><NonAdminAutoEmailReport /></NonAdminProtectedRoute>} />
         <Route path="/non-admin/reports/webappusage"     element={<NonAdminProtectedRoute><NonAdminWebAppUsage /></NonAdminProtectedRoute>} />
         <Route path="/non-admin/dlp/usb"                 element={<NonAdminProtectedRoute><NonAdminUSBDetection /></NonAdminProtectedRoute>} />
-        <Route path="/non-admin/dlp/emailactivitylogs"   element={<NonAdminProtectedRoute><NonAdminEmailActivityLogs /></NonAdminProtectedRoute>} />
+        {/* Hidden: the desktop agent does not collect this data, so the page
+            would always be empty. Route and component are intact — uncomment
+            if the agent ever gains the capability. */}
+        {/* <Route path="/non-admin/dlp/emailactivitylogs"   element={<NonAdminProtectedRoute><NonAdminEmailActivityLogs /></NonAdminProtectedRoute>} /> */}
         <Route path="/non-admin/track-user-settings"     element={<NonAdminProtectedRoute><TrackUserSettings /></NonAdminProtectedRoute>} />
 
         {/* ── Non-admin Settings ── */}

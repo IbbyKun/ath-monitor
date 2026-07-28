@@ -74,6 +74,15 @@ const CONFIG = {
     /** Longest edge of an uploaded screenshot, px. Keeps storage predictable. */
     SCREENSHOT_MAX_WIDTH: 1600,
 
+    /**
+     * How often, in seconds, to check for USB storage being plugged in or out.
+     *
+     * Polling rather than OS event hooks: the hooks need a native module, and
+     * a plug/unplug noticed within half a minute is entirely good enough for a
+     * report nobody reads in real time.
+     */
+    USB_SAMPLE_SEC: 30,
+
     /** Retry queue cap. At one entry per 5 min this is ~4 days of offline work. */
     MAX_QUEUED_ITEMS: 1200,
 

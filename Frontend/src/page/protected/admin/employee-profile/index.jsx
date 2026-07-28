@@ -21,15 +21,25 @@ import WebHistoryTab from "./WebHistoryTab";
 import AppHistoryTab from "./AppHistoryTab";
 import KeyStrokesTab from "./KeyStrokesTab";
 
+// Tabs the desktop agent has no data for are hidden rather than shown empty.
+//
+//   screencast / screenrecording — the agent captures still screenshots only;
+//     it does not stream or record video.
+//   keystrokes — keystroke *content* is deliberately never captured. It is a
+//     keylogger: it would collect passwords, trigger antivirus, and carry real
+//     legal exposure. This is a permanent decision, not a missing feature.
+//
+// Uncomment a row if the agent ever gains the capability; the tab components
+// are untouched.
 const tabDefs = [
   { key: "productivity", labelKey: "productivity", icon: BarChart3 },
   { key: "timesheets", labelKey: "timesheets", icon: Clock },
   { key: "screenshots", labelKey: "ss", icon: Camera },
-  { key: "screencast", labelKey: "screenCast", icon: Monitor },
-  { key: "screenrecording", labelKey: "screenRecording", icon: Video },
+  // { key: "screencast", labelKey: "screenCast", icon: Monitor },
+  // { key: "screenrecording", labelKey: "screenRecording", icon: Video },
   { key: "webhistory", labelKey: "webHistory", icon: Globe },
   { key: "apphistory", labelKey: "applicationHistory", icon: LayoutGrid },
-  { key: "keystrokes", labelKey: "keystroke", icon: PenTool },
+  // { key: "keystrokes", labelKey: "keystroke", icon: PenTool },
 ];
 
 const tabComponents = {

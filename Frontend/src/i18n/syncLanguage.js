@@ -1,12 +1,17 @@
-import i18n, { loadLanguageBundle } from "@/i18n";
+import i18n, { loadLanguageBundle, isSupportedLanguage } from "@/i18n";
 import apiService from "@/services/api.service";
 
 /**
  * Apply a language to i18n, localStorage, and document direction.
  * Lazy-loads the language bundle if not already loaded.
+ *
+ * Unsupported values are ignored rather than attempted. Organisations created
+ * before this deployment went English-only may still have e.g. "ar" stored
+ * against them, and honouring it would leave the user in a language the picker
+ * cannot switch out of — right-to-left, in that case.
  */
 export async function applyLanguage(lang) {
-  if (!lang) return;
+  if (!lang || !isSupportedLanguage(lang)) return;
   await loadLanguageBundle(lang);
   i18n.changeLanguage(lang);
   localStorage.setItem("appLanguage", lang);

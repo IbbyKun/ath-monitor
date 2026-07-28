@@ -96,13 +96,12 @@ export const TIMEZONES = [
 
 // ─── Language Data (from legacy blade template) ─────────────────────────────
 
+// English only. The other five locales upstream shipped are not wanted for
+// this deployment, and offering a language nobody maintains means new strings
+// silently appear untranslated. The bundles still exist in src/i18n and the
+// loader still supports them, so re-adding a row here is all it would take.
 export const LANGUAGES = [
     { label: "English", value: "en" },
-    { label: "Español", value: "es" },
-    { label: "Indonesia", value: "idn" },
-    { label: "Français", value: "fr" },
-    { label: "العربية", value: "ar" },
-    { label: "Português", value: "pt" },
 ];
 
 // ─── API: Get Localization Settings ─────────────────────────────────────────
