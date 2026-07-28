@@ -1,5 +1,12 @@
 # Migrations
 
+> **Running this service:** it is started by `docker compose up -d` from the
+> repository root, not by hand. The setup steps below predate that and will hit
+> dependency and environment problems the containers already solve — see
+> [`../../README.md`](../../README.md) and [`../Installation.md`](../Installation.md).
+> The architecture, endpoints and environment variables documented here are
+> still accurate.
+
 The Migrations service is a database initialization tool for the EmpMonitor platform. It creates the complete MySQL schema (95+ tables), seeds essential data (permissions, features, integrations, providers), and initializes MongoDB with organization categories.
 
 ## Tech Stack

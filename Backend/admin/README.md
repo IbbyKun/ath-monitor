@@ -1,5 +1,12 @@
 # Admin Microservice
 
+> **Running this service:** it is started by `docker compose up -d` from the
+> repository root, not by hand. The setup steps below predate that and will hit
+> dependency and environment problems the containers already solve — see
+> [`../../README.md`](../../README.md) and [`../Installation.md`](../Installation.md).
+> The architecture, endpoints and environment variables documented here are
+> still accurate.
+
 The Admin microservice is the core backend service of the EmpMonitor platform. It handles employee monitoring, productivity analytics, reporting, alerting, cloud storage integration, and organization management.
 
 ## Tech Stack

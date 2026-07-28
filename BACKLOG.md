@@ -1,7 +1,10 @@
-# EmpMonitor — Prioritised Backlog
+# ATH Monitor — Prioritised Backlog
 
 Status of everything known outstanding, ordered so each phase unblocks the next.
 Nothing below is started unless marked otherwise.
+
+New here? Read [`README.md`](README.md) first for what the system is and how to
+run it. This file is the answer to "what should I do next".
 
 **Legend** — 🔴 blocking · 🟡 important · 🟢 nice to have · ⏱️ long lead time
 
@@ -49,7 +52,8 @@ the API contract is fully documented in the DTOs.*
 | ~~2.1~~ | ~~Electron v1: login, timer, screenshots, idle, active app + window title~~ | ✅ | done | Built in `Agent/`. Verified end-to-end against the Docker stack: login, 5-min flush, screenshots to MinIO, clock-in upsert, app + window titles. See `Agent/README.md`. |
 | 2.2 | v2: mouse/keyboard counts, auto-update, auto-start on boot | 🟡 | 1–2 wks | The **offline queue shipped early in v1** — it was cheap and a wifi drop otherwise loses a whole afternoon. Remaining: per-key/click counts (`uiohook-napi`), `electron-updater`, launch-on-login. |
 | 2.3 | v3: browser extension for URLs | 🟢 | 1–2 wks | Without it you get "Chrome: 3h", not "Jira 2h / YouTube 1h". |
-| 2.8 | **Report *visible* windows, not just the focused one** | 🟡 | 2–3 d | Closes the dual-monitor gap. Today, work on screen 1 with Netflix playing on screen 2 credits **all** the time to the screen-1 app — only the screenshots reveal the second screen, and only if someone looks. `get-windows` already exposes `openWindows()`, and `/desktop/add-system-log` already accepts arbitrary events, so background windows can be reported as evidence without corrupting time accounting (two windows cannot both own the same second). Pairs well with an alert rule. |
+| ~~2.8~~ | ~~Report *visible* windows, not just the focused one~~ | ✅ | done | Closes the dual-monitor gap. Background windows are sampled once a minute and reported as system-log **type 11** — evidence, not time — and surfaced under **DLP → Second Screen Activity**. Only windows on a display that does not hold the focused window count, so single-monitor machines report nothing (occlusion is unknowable; guessing would be worse). Backend needed no changes. |
+| 2.9 | Alert rule on second-screen activity | 🟢 | 1 d | The data now exists but nobody is told about it — someone has to open the report. The alert engine in `admin/src/jobs/alertsAndNotifications` could raise one when a given app appears on a second screen for over N minutes. |
 | 2.4 | Repoint the "Download Agent" button at your own installer | 🟡 | 2 h | Endpoint and UI already exist; it currently serves a Qt binary you don't control. Now unblocked — 2.1 produces the installer. |
 | ~~2.5~~ | ~~Build the Windows installer on a Windows machine~~ | ✅ | done | **Not needed — it cross-builds from macOS/Linux.** `get-windows` publishes *prebuilt* Windows addons, so `scripts/fetch-win-native.mjs` just downloads one; `npmRebuild: false` stops node-gyp trying to compile it. Verified: a 96 MB NSIS installer with correct PE metadata, built on an Apple Silicon Mac. No VM, no Wine. |
 | 2.6 | Smoke-test the Windows build on a real Windows machine | 🔴 | 30 min | "It packaged" ≠ "it runs". One pass: install, sign in, start timer, confirm app names reach the portal. Any spare laptop or VM. |
@@ -103,6 +107,16 @@ doesn't need it, and `DISABLE_KEYSTROKE_FEATURE` already exists.
   (~$16/mo) doesn't justify 2–3 days of work. Use MinIO.
 - **Web app instead of a desktop agent — ruled out.** Employees use Excel and other
   desktop apps; a browser cannot see outside itself.
+- **Idle threshold → 5 minutes, judged per continuous run.** A 4-minute pause is
+  deducted not at all; a 7-minute pause is deducted in full, not just the 2
+  minutes past the line. Three defaults disagreed (10 / 10 / 2) and are now
+  reconciled, and the agent reads the value from the org setting rather than a
+  constant.
+- **Background windows are evidence, not time.** They deliberately do not enter
+  `appUsage`: those entries carry a start and end that the reporting side sums,
+  so two windows claiming the same minute would inflate the productive-hours
+  figure the system exists to produce.
+- **Keystroke *content* capture — permanently out of scope.** It is a keylogger.
 
 ---
 
@@ -117,12 +131,25 @@ Both long poles are down. **The only thing blocking a pilot now is the VPS** —
 credentials for Hostinger KVM 2 plus a subdomain, and Phase 1 is about a day's
 work. The agent already runs against the stack and produces real data.
 
-Verified end-to-end on the local Docker stack (27 Jul 2026): sign in, 5-minute
-activity flush, screenshots to MinIO at ~95 KB each, clock-in upsert extending a
-single timesheet row, and app + window titles landing in Mongo. The offline
-queue was tested by stopping `store-logs-api` mid-session — 7 items queued,
-all delivered after recovery, with screenshots still filed under their capture
-time rather than their upload time.
+Two things should happen before employees start tracking, neither of which
+needs the server:
+
+1. **Classify the applications** (3.9). Until then every hour is Neutral and
+   the dashboard reads `Productive 0.00%`, which looks like a broken product.
+   The list populates itself from real agent data, so this is a short task —
+   but it needs someone who knows which tools count as work.
+2. **Settle 3.10** — whether classifying an app re-scores days already
+   recorded. If it is forward-only, step 1 becomes a hard prerequisite rather
+   than a nicety.
+
+Verified end-to-end on the local Docker stack (27–28 Jul 2026): sign in,
+5-minute activity flush, screenshots to MinIO at ~95–190 KB each, clock-in
+upsert extending a single timesheet row, app + window titles in Mongo, and the
+portal rendering all of it — dashboard, employee profile, screenshot gallery
+and Second Screen Activity. The offline queue was tested by stopping
+`store-logs-api` mid-session: 7 items queued, all delivered after recovery,
+with screenshots still filed under their capture time rather than their upload
+time.
 
 **The risk being carried instead:** on unmanaged Windows machines an unsigned app
 that screenshots, autostarts and phones home matches Defender's spyware heuristics.

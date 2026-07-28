@@ -1,5 +1,23 @@
 # Backend Installation Guide
 
+> ## ⚠️ This is not how this fork is run.
+>
+> The supported path is **Docker Compose from the repository root** — see
+> [`../README.md`](../README.md) to run it and [`../DEPLOY.md`](../DEPLOY.md)
+> to host it. `docker-compose.yml` brings up all nine services plus MySQL,
+> MongoDB, Redis, MinIO and nginx, with the environment already wired between
+> them.
+>
+> Following the manual pm2 instructions below will hit a series of problems
+> that the Docker setup already solves: undeclared dependencies that only
+> resolve from stale `node_modules`, services that crash at require-time when
+> an optional env var is blank, and roughly a dozen `process.env.X.split(',')`
+> calls with no default. Those were fixed for the containers, not for this
+> guide.
+>
+> Kept for reference — the service list, port assignments and environment
+> variables below are still accurate and occasionally useful.
+
 This guide explains how to set up and run EMP Monitor backend microservices on a local machine.
 
 ## 1) Prerequisites

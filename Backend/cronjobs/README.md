@@ -1,5 +1,12 @@
 # Cronjobs Microservice
 
+> **Running this service:** it is started by `docker compose up -d` from the
+> repository root, not by hand. The setup steps below predate that and will hit
+> dependency and environment problems the containers already solve — see
+> [`../../README.md`](../../README.md) and [`../Installation.md`](../Installation.md).
+> The architecture, endpoints and environment variables documented here are
+> still accurate.
+
 The Cronjobs microservice handles all scheduled background tasks for the EmpMonitor platform including automated email reports, screenshot cleanup, data retention, external integrations, late login alerts, and failed activity recovery.
 
 ## Tech Stack

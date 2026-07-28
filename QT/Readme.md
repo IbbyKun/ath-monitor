@@ -9,6 +9,22 @@
 
 # ➤ QT Service
 
+> ## ⚠️ The source described below is not in this repository.
+>
+> This directory contains **only this file**. There is no `.cpp`, no `.h`, no
+> `.pro` — and there never has been in the git history. Upstream documents the
+> Qt agent but did not publish it, so none of the build instructions here can
+> be followed.
+>
+> **The desktop agent for this fork lives in [`../Agent`](../Agent).** It is an
+> Electron application written from scratch against the same backend API, which
+> needed no changes: the contract was already fully specified by the
+> store-logs-api DTOs and Joi schemas.
+>
+> Read [`../Agent/README.md`](../Agent/README.md) instead. This file is kept
+> only as a record of what upstream's agent did, since it is the closest thing
+> to a specification for the behaviour the backend expects.
+
 ### What is QT?
 **Qt** is a powerful cross-platform framework used for developing graphical user interfaces (**GUIs**) and applications that run on Windows, macOS, Linux, and mobile devices. It provides tools for creating sleek, responsive interfaces while handling low-level system operations. The framework is written in **C++** but supports other languages like Python and JavaScript, making it versatile for different development needs.
 

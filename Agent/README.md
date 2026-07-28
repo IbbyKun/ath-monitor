@@ -16,13 +16,53 @@ maintained by the same team that maintains the web app.
 | Capability | How |
 |---|---|
 | Manual start/stop timer | Hubstaff-style. Nothing is recorded until the user presses Start. |
-| Worked vs. idle time | `powerMonitor.getSystemIdleTime()`, sampled once a second. |
-| Periodic screenshots | Electron `desktopCapturer`, all monitors, ~9/hour by default. |
+| Worked vs. idle time | `powerMonitor.getSystemIdleTime()`, sampled once a second. See the idle rule below — it is not a simple threshold. |
+| Periodic screenshots | Electron `desktopCapturer`, every connected display, ~9/hour by default. |
 | Active application + window title | `get-windows`. Covers Excel and other desktop apps, not just browsers. |
+| Second-screen activity | Windows on a display other than the focused one, reported as evidence rather than as time. |
 | Survives going offline | Failed uploads are written to disk and retried. |
 | Runs in the background | Closing the window hides it to the tray; the timer keeps running. |
 
-**Not in v1** — these are tracked in [`../BACKLOG.md`](../BACKLOG.md) as 2.2 and 2.3:
+### The idle rule
+
+Inactivity is judged **per continuous run**, not as a running total, and the
+threshold comes from the organisation's `idleInMinute` setting (5 minutes by
+default) rather than being baked into the build:
+
+- Stop for 4 minutes, then move the mouse → **nothing** is deducted. The whole
+  pause counts as worked time and the run resets.
+- Stop for 7 minutes → **all 7** are deducted, not just the 2 past the
+  threshold.
+
+Short pauses are how people actually work — reading, thinking, talking to
+someone at the desk — so charging them as idle would under-report real work.
+
+Because the threshold equals the flush interval, a qualifying run almost always
+spans two uploads. Crossing the line back-charges the whole run at once,
+clamped to the interval so nothing is double counted. Daily totals are exact;
+only which five-minute bucket the time lands in can shift.
+
+### Second-screen activity
+
+Time is always credited to the **focused** window, because two windows cannot
+both own the same second and inflating app usage would corrupt the
+productive-hours figure. That leaves a gap: work on one screen with a film
+playing on another looks, in the timesheet, exactly like plain work.
+
+So background windows are reported separately, as system-log events of type
+`11`, surfaced in the portal under **DLP → Second Screen Activity**. Evidence,
+not time.
+
+Occlusion is the hard part and the design sidesteps it rather than guessing:
+the OS lists open windows but will not say which pixels are visible. What *is*
+knowable is which display a window sits on, so only windows on a display that
+does not hold the focused window are reported — **single-monitor machines
+report nothing at all**, which is the correct answer rather than a limitation.
+Also filtered: anything behind another window on the same display, anything
+smaller than 200×150, anything while the machine is idle, and anything seen for
+under two minutes.
+
+**Not in v1** — tracked in [`../BACKLOG.md`](../BACKLOG.md) as 2.2 and 2.3:
 
 - Per-key/click counts (needs `uiohook-napi`). The activity signal today is
   active-vs-idle per second, which is enough for a productivity percentage but
@@ -133,6 +173,7 @@ prefix, so the agent only ever needs one base URL.
 | Screenshot frequency | `GET /api/v1/desktop/feature-status` |
 | Activity batch | `POST /api/v1/desktop/add-activity-log` |
 | Screenshots | `POST /api/v1/desktop/upload-screenshots` (multipart) |
+| Second-screen events | `POST /api/v1/desktop/add-system-log` (type `11`) |
 | Clock in/out | `POST /api/v1/timesheet/record-clock-in` |
 
 All but the first take `Authorization: Bearer <token>`.

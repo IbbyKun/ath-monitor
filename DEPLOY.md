@@ -1,11 +1,33 @@
-# Deploying EmpMonitor
+# Deploying ATH Monitor
 
+- [Where this is being hosted](#where-this-is-being-hosted)
 - [Run it locally with Docker](#run-it-locally-with-docker)
 - [What is and isn't containerised](#what-is-and-isnt-containerised)
 - [Azure: test environment](#azure-test-environment-10-users-1-week)
 - [Azure: production](#azure-production-300500-users)
 - [Storage: the Azure gotcha](#storage-the-azure-gotcha)
 - [Scaling: what's easy and what isn't](#scaling-what-is-easy-and-what-isnt)
+
+---
+
+## Where this is being hosted
+
+**Decision: Hostinger KVM 2 for the pilot, not Azure.**
+
+Roughly $8/month against $75–95 for the equivalent Azure B2ms once bandwidth
+and managed services are counted — for a ten-person pilot that difference buys
+nothing. The whole stack is Docker Compose on one box either way, so the
+provider is a config detail rather than an architectural one, and moving later
+is a `docker compose up` on a bigger machine.
+
+The Azure sections below are **kept as the costing model for 300–500 users**,
+not as the current plan. When the pilot outgrows one box, that is the analysis
+to return to. Re-check the prices before relying on them.
+
+What is still outstanding for the pilot deploy is tracked as Phase 1 in
+[`BACKLOG.md`](BACKLOG.md); it is blocked only on SSH credentials and a
+subdomain. Note in particular **1.5 — remove the `AUTH_METHOD_V3` login
+bypass**, which must not reach a public host.
 
 ---
 
@@ -66,6 +88,10 @@ as an installer, not an image.
 ---
 
 ## Azure: test environment (10 users, 1 week)
+
+> Superseded for the pilot — see [Where this is being hosted](#where-this-is-being-hosted).
+> Hostinger KVM 2 gives comparable specs (2 vCPU / 8 GB) for roughly a tenth of
+> this. Kept for the cost comparison and because the sizing logic still holds.
 
 One VM running the whole compose stack. Mirrors how the app already runs on your
 existing test server, so there are no surprises.
@@ -159,6 +185,10 @@ alone. Commit once the pilot has validated the sizing.
 ---
 
 ## Storage: the Azure gotcha
+
+> Only relevant if you go to Azure. On Hostinger, MinIO on the box is the
+> answer and there is nothing to decide — skip to
+> [Dual monitors double the screenshot bill](#dual-monitors-double-the-screenshot-bill).
 
 **This codebase has no Azure Blob Storage driver.** Supported providers are S3,
 Google Drive, OneDrive, Dropbox, Zoho WorkDrive, WebDAV, FTP and SFTP

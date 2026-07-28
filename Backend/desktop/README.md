@@ -1,5 +1,12 @@
 # Desktop Microservice
 
+> **Running this service:** it is started by `docker compose up -d` from the
+> repository root, not by hand. The setup steps below predate that and will hit
+> dependency and environment problems the containers already solve — see
+> [`../../README.md`](../../README.md) and [`../Installation.md`](../Installation.md).
+> The architecture, endpoints and environment variables documented here are
+> still accurate.
+
 The Desktop microservice is the agent-facing backend API for the EmpMonitor platform. It handles communication with desktop monitoring agents — receiving tracking data (activities, keystrokes, screenshots, system logs, emails), managing agent registration, enforcing organizational policies, and serving configuration to agents.
 
 ## Tech Stack

@@ -14,6 +14,17 @@
 
 ## ➤ Microservices Architecture
 
+> **Note for this fork:** the architecture described here is accurate, but the
+> setup instructions are not — services are run with Docker Compose from the
+> repository root, not individually under pm2. See [`../README.md`](../README.md)
+> and [`Installation.md`](Installation.md).
+>
+> One naming difference worth knowing: the folder names in this tree do not
+> match the service names used below. `admin` is the "main service",
+> `store-logs-api` is the "store service" (and the only NestJS one),
+> `desktop` is the "agent service", and `productivity_report` is the
+> "report service".
+
 The **EmpMonitor Open Source's Backend Microservices Architecture** is a robust system designed to support an Employee Monitoring application by leveraging a microservices architecture. This approach breaks down the backend into smaller, independent services, each dedicated to handling specific tasks such as agent communication, user analytics, data processing, and activity logging. By dividing the system into these specialized components, the architecture ensures better **_scalability_**, **_flexibility_**, and **_maintainability_**. Each microservice operates independently, allowing for easier updates, debugging, and scaling without disrupting the entire system. This modular design is particularly beneficial for applications like EMPMonitor, where diverse functionalities need to work seamlessly together.
 
 To set up the EMPMonitor backend, you’ll need to ensure that essential tools and technologies are in place. Key requirements include `Node.js` for runtime, `NPM` for package management, `PM2` for process management, and databases like `MySQL`, `MongoDB`, and `Redis` for data storage and caching. The installation process involves **_setting up the server environment_**, **_installing dependencies_** for each microservice, and **_configuring the databases_** with the necessary credentials. Once the environment is ready, each microservices such as the `agent-service`, `main-service`, `report-service`, and `store-service` can be started individually using `PM2`. These services are organized into dedicated folders, each responsible for its unique function, ensuring a clean and structured **open-source-friendly** codebase.
