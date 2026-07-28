@@ -11,6 +11,7 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog"
+import { getLocations } from "@/services/dlp.service"
 import { useShiftManagementStore } from "@/page/protected/admin/shift-management/shiftManagementStore"
 import { validateShiftForm } from "@/page/protected/admin/shift-management/service"
 
@@ -42,7 +43,8 @@ const DEFAULT_DAYS_STATE = () =>
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-const CreateShift = ({ mode = "create" }) => {  const { t } = useTranslation();
+const CreateShift = ({ mode = "create" }) => {
+  const { t } = useTranslation();
 
     const {
         createDialogOpen,
@@ -63,6 +65,13 @@ const CreateShift = ({ mode = "create" }) => {  const { t } = useTranslation();
     const [shiftName, setShiftName] = useState("")
     const [selectedColor, setSelectedColor] = useState(1)
     const [dayConfig, setDayConfig] = useState(DEFAULT_DAYS_STATE)
+    // A shift's location is what gives it a timezone: attendance is judged
+    // against the location's clock, so "09:00" means 09:00 where that team
+    // actually sits. Without one the shift silently falls back to the
+    // organisation's timezone, which marks a team in another country late
+    // every morning.
+    const [locationId, setLocationId] = useState("")
+    const [locationOptions, setLocationOptions] = useState([])
     const [lateLogin, setLateLogin] = useState("0")
     const [earlyLogout, setEarlyLogout] = useState("0")
     const [halfDayHour, setHalfDayHour] = useState("00")
@@ -82,6 +91,7 @@ const CreateShift = ({ mode = "create" }) => {  const { t } = useTranslation();
             setShiftName(editShiftData.name || "")
             setSelectedColor(editShiftData.color_code || 1)
             setNote(editShiftData.notes || "")
+            setLocationId(editShiftData.location_id ? String(editShiftData.location_id) : "")
             setLateLogin(String(editShiftData.late_period ?? 0))
             setEarlyLogout(String(editShiftData.early_login_logout_time ?? 0))
 
@@ -127,6 +137,19 @@ const CreateShift = ({ mode = "create" }) => {  const { t } = useTranslation();
         }
     }, [isEdit, editShiftData, open])
 
+    // Locations double as timezone groups, so the picker needs the live list.
+    useEffect(() => {
+        if (!open) return
+        let cancelled = false
+        getLocations().then((items) => {
+            if (cancelled) return
+            // getLocations() prepends an "All Locations" filter entry that makes
+            // no sense here — a shift belongs to one location or none.
+            setLocationOptions(items.filter((i) => i.value !== "all"))
+        })
+        return () => { cancelled = true }
+    }, [open])
+
     const resetForm = () => {
         setShiftName("")
         setSelectedColor(1)
@@ -137,6 +160,7 @@ const CreateShift = ({ mode = "create" }) => {  const { t } = useTranslation();
         setHalfDayMin("00")
         setOvertimeHour("00")
         setOvertimeMin("00")
+        setLocationId("")
         setHalfDayProdHrs("00")
         setHalfDayProdMin("00")
         setFullDayProdHrs("00")
@@ -193,6 +217,7 @@ const CreateShift = ({ mode = "create" }) => {  const { t } = useTranslation();
         name: shiftName,
         color_code: selectedColor,
         notes: note,
+        location_id: locationId ? parseInt(locationId, 10) : undefined,
         late_period: parseInt(lateLogin, 10) || 0,
         early_login_logout_time: parseInt(earlyLogout, 10) || 0,
         half_day_hours: `${halfDayHour || "00"}:${halfDayMin || "00"}`,
@@ -262,6 +287,38 @@ const CreateShift = ({ mode = "create" }) => {  const { t } = useTranslation();
                             placeholder={t("shift.nameOfShift")}
                             className="h-10 rounded-lg border-slate-200 text-sm"
                         />
+                    </div>
+
+                    {/* Location — this is what gives the shift its timezone */}
+                    <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                        <div className="flex items-center gap-2 sm:min-w-[140px] sm:pt-2">
+                            <span className="w-1 h-5 rounded-full bg-teal-500" />
+                            <span className="text-sm font-semibold text-slate-700">
+                                Location
+                            </span>
+                        </div>
+                        <div className="flex-1">
+                            <select
+                                value={locationId}
+                                onChange={(e) => setLocationId(e.target.value)}
+                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700"
+                            >
+                                <option value="">
+                                    Organisation default timezone
+                                </option>
+                                {locationOptions.map((loc) => (
+                                    <option key={loc.value} value={loc.value}>
+                                        {loc.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-slate-400 mt-1">
+                                Start and end times are read in this location&rsquo;s timezone, so
+                                09:00 means 09:00 where that team sits. Set each location&rsquo;s
+                                timezone under Manage Location &amp; Department; several shifts can
+                                share one location.
+                            </p>
+                        </div>
                     </div>
 
                     {/* Select Color */}
@@ -355,8 +412,8 @@ const CreateShift = ({ mode = "create" }) => {  const { t } = useTranslation();
                             </span>
                         </div>
                         <div className="flex-1 space-y-4">
-                            {/* Row 1: Late Login, Early Logout, Half Day, Over Time */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            {/* Row 1: Late Login, Early Logout, Over Time */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div>
                                     <label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1">
                                         Late Login
@@ -389,31 +446,6 @@ const CreateShift = ({ mode = "create" }) => {  const { t } = useTranslation();
                                 </div>
                                 <div>
                                     <label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1">
-                                        Half Day
-                                        <Info className="w-3 h-3 text-blue-500" title="Half day threshold in HH:MM" />
-                                    </label>
-                                    <div className="flex items-center gap-1">
-                                        <Input
-                                            type="text"
-                                            value={halfDayHour}
-                                            onChange={(e) => setHalfDayHour(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                                            placeholder="HH"
-                                            maxLength={2}
-                                            className="h-9 rounded-lg border-slate-200 text-xs text-center w-12"
-                                        />
-                                        <span className="text-slate-400">:</span>
-                                        <Input
-                                            type="text"
-                                            value={halfDayMin}
-                                            onChange={(e) => setHalfDayMin(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                                            placeholder="MM"
-                                            maxLength={2}
-                                            className="h-9 rounded-lg border-slate-200 text-xs text-center w-12"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1">
                                         Over Time
                                         <Info className="w-3 h-3 text-blue-500" title="Overtime threshold in HH:MM" />
                                     </label>
@@ -439,37 +471,12 @@ const CreateShift = ({ mode = "create" }) => {  const { t } = useTranslation();
                                 </div>
                             </div>
 
-                            {/* Row 2: Half-Day Productive Time, Full-Day Productive Time */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Row 2: the one number that drives full/half/absent */}
+                            <div className="grid grid-cols-1 gap-4">
                                 <div>
                                     <label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1">
-                                        Half-Day Productive Time
-                                        <Info className="w-3 h-3 text-blue-500" title="Time in hours" />
-                                    </label>
-                                    <div className="flex items-center gap-1">
-                                        <Input
-                                            type="text"
-                                            value={halfDayProdHrs}
-                                            onChange={(e) => setHalfDayProdHrs(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                                            placeholder="HH"
-                                            maxLength={2}
-                                            className="h-9 rounded-lg border-slate-200 text-xs text-center w-14"
-                                        />
-                                        <span className="text-slate-400">:</span>
-                                        <Input
-                                            type="text"
-                                            value={halfDayProdMin}
-                                            onChange={(e) => setHalfDayProdMin(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                                            placeholder="MM"
-                                            maxLength={2}
-                                            className="h-9 rounded-lg border-slate-200 text-xs text-center w-14"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1">
-                                        Full-Day Productive Time
-                                        <Info className="w-3 h-3 text-blue-500" title="Time in hours" />
+                                        Required Productive Time per working day
+                                        <Info className="w-3 h-3 text-blue-500" title="Half day and absent are derived from this" />
                                     </label>
                                     <div className="flex items-center gap-1">
                                         <Input
@@ -490,6 +497,13 @@ const CreateShift = ({ mode = "create" }) => {  const { t } = useTranslation();
                                             className="h-9 rounded-lg border-slate-200 text-xs text-center w-14"
                                         />
                                     </div>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                        Everything else follows from this. A day counts as
+                                        <strong> full</strong> once productive time reaches about 83% of
+                                        it, <strong> half</strong> down to 50%, and
+                                        <strong> absent</strong> below that. Leave at 00:00 to judge on
+                                        hours at the desk instead.
+                                    </p>
                                 </div>
                             </div>
                         </div>

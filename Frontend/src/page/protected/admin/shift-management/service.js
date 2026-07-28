@@ -94,6 +94,10 @@ const buildShiftPayload = (formData) => {
         data: JSON.stringify(dayPayload),
         color_code: parseInt(formData.color_code, 10) || 1,
         notes: (formData.notes != null && formData.notes !== "") ? formData.notes : " ",
+        // Omitted entirely when unset — the backend validator types this as an
+        // integer, so sending null or "" would fail the whole save. A shift
+        // without a location falls back to the organisation's timezone.
+        ...(formData.location_id ? { location_id: parseInt(formData.location_id, 10) } : {}),
         late_period: parseInt(formData.late_period, 10) || 0,
         early_login_logout_time: parseInt(formData.early_login_logout_time, 10) || 0,
         half_day_hours: formData.half_day_hours || "00:00",

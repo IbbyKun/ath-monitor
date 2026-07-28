@@ -47,8 +47,19 @@ class AttendanceCalculator {
             this.attendance = 'Don`t have shift for this employee';
             return this.getSheet();
         }
-        const { timezone, data: shiftTimeStr, name } = this.shift;
-        this.timezone = this.orgTimezone || this.employee.timezone;
+        const { timezone: shiftTimezone, data: shiftTimeStr, name } = this.shift;
+
+        // The shift's timezone comes from its location (see
+        // Employee.model.js getOrganizationShifts, which joins
+        // organization_locations for it) and must win. A shift start of
+        // "09:00" is 09:00 *where that team sits*, so a Karachi shift and a
+        // London shift both reading 09:00 are different instants.
+        //
+        // This used to destructure the value and then immediately overwrite it
+        // with the organisation-wide timezone, so every location was judged
+        // against head office's clock — a team five hours away was marked late
+        // every single morning. Locations are the timezone grouping; honour them.
+        this.timezone = shiftTimezone || this.orgTimezone || this.employee.timezone;
         this.employee.shift = name;
         const shiftWeekData = JSON.parse(shiftTimeStr);
         this.attendance = {};
@@ -130,44 +141,16 @@ class AttendanceCalculator {
                 return log;
             }
             const { empWorkTime, shiftWorkTime } = this.getWorkTimeDiff(allTimes);
-            const productivity = await fetchProductivity(this.employee.id,this.employee.orgId,day)
-            let requireHalfDayTime;
-            if(this.minWorkingHoursForHalfday) requireHalfDayTime = this.minWorkingHoursForHalfday;  
-            else requireHalfDayTime = shiftWorkTime / 2;
-            let requireFullDayTime = requireHalfDayTime * 2;
-            // Combined check for full day (Present)
-            if (
-                empWorkTime > requireFullDayTime &&
-                (
-                    !this.productivity_present || (this.productivity_present && productivity > this.productivity_present)
-                )
-            ) {
-                log.marker = 'P';
-                this.counter.plus('P');
+            const productivity = await fetchProductivity(this.employee.id, this.employee.orgId, day);
+
+            const marker = this.classifyDay({ productivity, empWorkTime, shiftWorkTime });
+            log.marker = marker;
+            this.counter.plus(marker);
+
+            if (marker === 'A') {
                 return log;
             }
 
-            if (this.productivity_halfday) {
-                if (empWorkTime >= requireHalfDayTime && (productivity > this.productivity_halfday && productivity <= this.productivity_present)) {
-                    log.marker = 'H';
-                    this.counter.plus('H');
-                } else if (empWorkTime < requireHalfDayTime || productivity <= this.productivity_halfday) {
-                    log.marker = 'A';
-                    this.counter.plus('A');
-                    return log;
-                }
-            } else {
-                if (empWorkTime >= requireHalfDayTime && empWorkTime < shiftWorkTime - this.earlyLogoutPeriod) {
-                    log.marker = 'H';
-                    this.counter.plus('H');
-                }
-                else if (empWorkTime <= requireHalfDayTime) {
-                    log.marker = 'A';
-                    this.counter.plus('A');
-                    return log;
-                }
-            }
-                     
             const isLate = this.isLate(empCheckin, shiftStart);
             const isOvertime = this.isOvertime(empWorkTime, shiftWorkTime);
             const isEarlyLogout = this.isEarlyLogout(empCheckout, shiftEnd);
@@ -189,7 +172,9 @@ class AttendanceCalculator {
                 this.counter.plus('EL');
                 log.earlyLogout_duration = isEarlyLogout + this.earlyLogoutPeriod;
             }
-            if (!(log.marker=='H')) this.counter.plus('P');
+            // The day's marker was counted once by classifyDay above. A second
+            // `counter.plus('P')` used to live here, so every full day was
+            // tallied twice in the monthly totals.
 
             return log;
         } catch (error) {
@@ -214,6 +199,51 @@ class AttendanceCalculator {
         }
         return log;
     }
+    /**
+     * Decide whether a worked day counts as full, half or absent.
+     *
+     * One number drives it: the productive time a working day is expected to
+     * contain, set per shift as "Full-Day Productive Time". Everything else is
+     * derived from that ratio, so there is nothing to keep in step:
+     *
+     *     ratio = target / actual productive time
+     *
+     *       ratio <  1.2  ->  P   full day
+     *       ratio <  2    ->  H   half day
+     *       otherwise     ->  A   absent
+     *
+     * With an 8-hour target that puts the full-day floor at 6h40m and the
+     * half-day floor at 4h. The 1.2 band exists so somebody who works a normal
+     * day but loses twenty minutes to a meeting that isn't on their screen is
+     * not docked half a day for it.
+     *
+     * Note this judges **productive** time, not time at the desk — being
+     * clocked in for nine hours with two hours of productive work is a half
+     * day, which is the point of measuring it this way.
+     *
+     * If no target is configured the rule cannot apply, and falling through to
+     * "absent" would mark an entire organisation absent the moment they
+     * enabled shifts. So we keep the old hours-at-desk comparison for that
+     * case; configuring a target is what switches the productive-time rule on.
+     */
+    classifyDay({ productivity, empWorkTime, shiftWorkTime }) {
+        const target = this.productivity_present;
+
+        if (!target) {
+            const halfDayFloor = this.minWorkingHoursForHalfday || shiftWorkTime / 2;
+            if (empWorkTime <= halfDayFloor) return 'A';
+            if (empWorkTime < shiftWorkTime - this.earlyLogoutPeriod) return 'H';
+            return 'P';
+        }
+
+        if (!productivity || productivity <= 0) return 'A';
+
+        const ratio = target / productivity;
+        if (ratio < AttendanceCalculator.FULL_DAY_RATIO) return 'P';
+        if (ratio < AttendanceCalculator.HALF_DAY_RATIO) return 'H';
+        return 'A';
+    }
+
     isOvertime(empWorkTime, shiftWorkTime) {
         const overtime = empWorkTime - shiftWorkTime;
         return overtime - this.overtime_period;
@@ -314,6 +344,16 @@ class AttendanceCalculator {
         return { ...this.employee, ...this.counter.values, date: this.attendance };
     }
 }
+
+/**
+ * Day-classification bands, as `target / actual productive time`.
+ *
+ * Named rather than inlined because they are a policy decision, not an
+ * implementation detail — if the business changes its mind about how much
+ * slack a full day gets, this is the one place to change.
+ */
+AttendanceCalculator.FULL_DAY_RATIO = 1.2;   // within ~83% of target -> full day
+AttendanceCalculator.HALF_DAY_RATIO = 2;     // at least half the target -> half day
 
 module.exports = AttendanceCalculator;
 

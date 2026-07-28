@@ -103,7 +103,8 @@ minutes is the default and can be changed.
 |---|---|---|
 | Timesheets | ✅ | Hours per person per day, exportable. |
 | Attendance and punctuality | ⚙️ | A month-at-a-glance grid marking each day Present, Absent, Half-day, **Late**, Overtime or Early-logout — with the minutes. Exports to Excel. Needs shifts set up first. |
-| Shifts with a lateness rule | ⚙️ | Per-day start and end times, a grace period before "late" counts (10 min by default), half-day threshold, overtime threshold and an early-logout allowance. |
+| Shifts | ⚙️ | Per-day start and end times, the required productive time for a working day, a grace period before "late" counts, and an overtime threshold. |
+| Timezone groups | ✅ | A **Location** carries a timezone. Put employees in a location, point their shift at the same one, and 09:00 means 09:00 *there*. Several shifts can share one location, and different locations can run different timezones — so you never set a timezone per person. |
 | Time claims | ✅ | Employees request forgotten time; managers approve or reject. |
 
 > ### Punctuality: what counts as "checking in"
@@ -116,28 +117,34 @@ minutes is the default and can be changed.
 > Nothing is recorded until shifts are configured and people are assigned to
 > one. Until then everyone is treated as having no fixed hours.
 >
-> ### How the required daily hours are set
+> ### How a day is judged
 >
-> **The shift's start and end times are the day's length.** 09:00–18:00 means a
-> nine-hour day, and that is what attendance and overtime are measured against.
-> There is no separate "hours per day" box.
+> **One number decides everything: Required Productive Time per working day.**
+> Set it on the shift — say 8 hours — and the rest follows automatically:
 >
-> Three other fields adjust what that day has to contain:
->
-> | Field | What it does |
+> | Productive time that day | Counts as |
 > |---|---|
-> | **Over Time** | How far *past* the shift end before overtime is credited. A threshold, not a target — set 00:30 and someone leaving 20 minutes late gets nothing, 45 minutes late is recorded as 45 minutes of overtime. Defaults to 1 hour if left blank. |
-> | **Half Day** | Hours below which the day is marked `H` instead of `P`. |
-> | **Full-Day / Half-Day Productive Time** | An extra requirement: even with the hours present, the day only counts as full unless *productive* time clears this. Leave blank to judge on attendance alone. |
+> | 6h 40m or more (about 83%) | **Full day** |
+> | 4h 00m to 6h 40m | **Half day** |
+> | Under 4h 00m | **Absent** |
 >
-> ⚠️ **Careful with Half Day.** The full-day requirement is calculated as
-> **double** the half-day figure — not from the shift length. Set Half Day to 4
-> hours on a 9-hour shift and a "full day" quietly becomes 8 hours, not 9.
-> Leave it blank and it follows the shift correctly.
+> There is no separate half-day box to keep in step — half is simply half, and
+> the small tolerance above it means somebody who works a normal day but loses
+> twenty minutes to a meeting off-screen is not docked half a day for it.
 >
-> Separately, **Settings → Monitoring Control** has its own productive-hours
-> target (8 hours by default) that drives the dashboard. It is independent of
-> the shift's Full-Day Productive Time — if you want one number, set both.
+> This judges **productive** time, not time at the desk. Being clocked in for
+> nine hours with two hours of productive work is a half day. That is the point
+> of measuring it this way.
+>
+> Two other fields sit alongside it:
+>
+> - **Late Login** — the grace period. Start the timer within it and you are on
+>   time; after it, the day is marked late with the minutes recorded.
+> - **Over Time** — how far past the shift end before overtime is credited.
+>
+> Leave Required Productive Time at `00:00` and the system falls back to
+> judging hours at the desk instead, which is what happens if you never
+> configure it.
 >
 > **One thing to decide before using this for anything that affects people:**
 > the app does not yet start automatically when a laptop boots. Someone who
