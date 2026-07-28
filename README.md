@@ -144,9 +144,12 @@ portal rendering all of it.
 estimates and reasoning:
 
 - No server is deployed. This is the only thing blocking a pilot.
-- The agent has no auto-update, no start-on-boot, and no keyboard/mouse counts.
+- The agent has no auto-update and does not start on login.
 - Browser URLs need an extension; today you get the window title.
 - The agent ships **unsigned** — a deliberate decision, with mitigations.
+
+Keyboard and mouse input both count fully towards activity; what the agent
+cannot do is report which of the two it was, and nothing needs it to.
 
 **Deliberately out of scope, permanently:** keystroke *content* capture. It is
 a keylogger — it captures passwords, guarantees antivirus problems, and is not

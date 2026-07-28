@@ -15,7 +15,7 @@ No technical knowledge needed. If you want the engineering detail, see
 |---|---|
 | ✅ | **Ready.** Works today, nothing to do. |
 | ⚙️ | **Ready, but needs setting up first.** Someone has to configure or fill something in. |
-| ⚠️ | **Partly working.** The screen exists but will be empty or incomplete — usually because the desktop app doesn't collect that yet. |
+| ⚠️ | **Not there yet.** Planned, but not built. |
 | 🚫 | **Turned off.** Deliberately hidden. Can be switched back on if wanted. |
 
 ---
@@ -230,11 +230,15 @@ These are known gaps, listed in [`BACKLOG.md`](BACKLOG.md) with estimates:
   between here and a live pilot.
 - **Website addresses.** The system records "Chrome — Jira" from the window
   title, not the actual link. Getting real URLs needs a browser add-on.
-- **Separating typing from clicking.** Both already count fully towards
-  activity — a second spent typing and a second spent using the mouse are
-  treated identically, so nobody is penalised for how they work. What the
-  system can't currently do is report *which* of the two it was, and there is
-  no plan to need that.
 - **Automatic updates and start-on-login** for the desktop app.
 - **Alerts for second-screen activity** — the information is recorded, but
   nobody is notified; someone has to open the report.
+
+### Settled, so not on the list
+
+- **Typing versus clicking.** Both already count fully towards activity — a
+  second spent typing and a second spent on the mouse are treated identically,
+  so nobody is penalised for how they work. Reporting *which* it was would need
+  extra software on each machine for no benefit, so it is not planned.
+- **Recording what people type.** Never. It would capture passwords and private
+  messages, and it is not needed to measure productive time.

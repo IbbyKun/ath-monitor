@@ -84,12 +84,15 @@ under two minutes.
 
 **Not in v1** — tracked in [`../BACKLOG.md`](../BACKLOG.md) as 2.2 and 2.3:
 
-- Per-key/click counts (needs `uiohook-napi`). The activity signal today is
-  active-vs-idle per second, which is enough for a productivity percentage but
-  cannot distinguish typing from clicking.
 - Auto-update and auto-start on boot.
 - Browser URLs. Without the extension you get `Chrome — <tab title>`, not the
   URL. Window titles still make most tabs identifiable.
+
+**Per-key/click counts were dropped from scope.** Keyboard and mouse already
+both count as activity — `getSystemIdleTime()` resets on either — and reporting
+*which* was used was confirmed unnecessary. It would need `uiohook-napi`, a
+native input hook that complicates the cross-build and adds antivirus surface,
+for no gain.
 
 Keystroke **content** capture is deliberately out of scope permanently. It is a
 keylogger: it captures passwords, guarantees antivirus problems, and carries

@@ -50,14 +50,15 @@ the API contract is fully documented in the DTOs.*
 | 2.0a | **Submit the binary to Microsoft as a false positive** | 🟡 | 30 min + few days | Free, at microsoft.com/wdsi/filesubmission. Do this as soon as the first build exists — it is the single most effective unsigned mitigation, and the turnaround is days. |
 | 2.0b | Document the SmartScreen bypass for pilot users | 🟡 | 15 min | "More info → Run anyway". Ship it with the install instructions so nobody assumes the app is malware. |
 | ~~2.1~~ | ~~Electron v1: login, timer, screenshots, idle, active app + window title~~ | ✅ | done | Built in `Agent/`. Verified end-to-end against the Docker stack: login, 5-min flush, screenshots to MinIO, clock-in upsert, app + window titles. See `Agent/README.md`. |
-| 2.2 | v2: mouse/keyboard counts, auto-update, auto-start on boot | 🟡 | 1–2 wks | The **offline queue shipped early in v1** — it was cheap and a wifi drop otherwise loses a whole afternoon. Remaining: per-key/click counts (`uiohook-napi`), `electron-updater`, launch-on-login. |
+| 2.2 | v2: auto-update and auto-start on boot | 🟡 | 1 wk | The **offline queue shipped early in v1** — it was cheap and a wifi drop otherwise loses a whole afternoon. **Per-key/click counts dropped from scope:** typing and mouse already both count as activity, and distinguishing them was confirmed unnecessary, so `uiohook-napi` — a native dependency that would complicate the cross-build and add antivirus surface — is not worth adding. Remaining: `electron-updater`, launch-on-login. |
 | 2.3 | v3: browser extension for URLs | 🟢 | 1–2 wks | Without it you get "Chrome: 3h", not "Jira 2h / YouTube 1h". |
-| ~~2.8~~ | ~~Report *visible* windows, not just the focused one~~ | ✅ | done | Closes the dual-monitor gap. Background windows are sampled once a minute and reported as system-log **type 11** — evidence, not time — and surfaced under **DLP → Second Screen Activity**. Only windows on a display that does not hold the focused window count, so single-monitor machines report nothing (occlusion is unknowable; guessing would be worse). Backend needed no changes. |
-| 2.9 | Alert rule on second-screen activity | 🟢 | 1 d | The data now exists but nobody is told about it — someone has to open the report. The alert engine in `admin/src/jobs/alertsAndNotifications` could raise one when a given app appears on a second screen for over N minutes. |
 | 2.4 | Repoint the "Download Agent" button at your own installer | 🟡 | 2 h | Endpoint and UI already exist; it currently serves a Qt binary you don't control. Now unblocked — 2.1 produces the installer. |
 | ~~2.5~~ | ~~Build the Windows installer on a Windows machine~~ | ✅ | done | **Not needed — it cross-builds from macOS/Linux.** `get-windows` publishes *prebuilt* Windows addons, so `scripts/fetch-win-native.mjs` just downloads one; `npmRebuild: false` stops node-gyp trying to compile it. Verified: a 96 MB NSIS installer with correct PE metadata, built on an Apple Silicon Mac. No VM, no Wine. |
-| 2.6 | Smoke-test the Windows build on a real Windows machine | 🔴 | 30 min | "It packaged" ≠ "it runs". One pass: install, sign in, start timer, confirm app names reach the portal. Any spare laptop or VM. |
+| 2.6 | Smoke-test the Windows build on a real Windows machine | 🔴 | 30 min | "It packaged" ≠ "it runs". One pass: install, sign in, start timer, confirm app names reach the portal — that last step is what catches a missing native addon. **Also plug a USB stick in and pull it out**, then check DLP → USB Detection: the Windows enumeration path (`Win32_DiskDrive`) has only been tested against synthetic data. Any spare laptop or VM. |
 | 2.7 | Add an application icon | 🟢 | 30 min | Currently ships the stock Electron icon (`build/icon.ico`, 256×256). Minor, but a generic icon on an unsigned autostarting app is one more reason for a user to distrust it. |
+| ~~2.8~~ | ~~Report *visible* windows, not just the focused one~~ | ✅ | done | Closes the dual-monitor gap. Background windows are sampled once a minute and reported as system-log **type 11** — evidence, not time — and surfaced under **DLP → Second Screen Activity**. Only windows on a display that does not hold the focused window count, so single-monitor machines report nothing (occlusion is unknowable; guessing would be worse). Backend needed no changes. |
+| 2.9 | Alert rule on second-screen activity | 🟢 | 1 d | The data now exists but nobody is told about it — someone has to open the report. The alert engine in `admin/src/jobs/alertsAndNotifications` could raise one when a given app appears on a second screen for over N minutes. |
+| ~~2.10~~ | ~~USB storage detection~~ | ✅ | done | Reported as system-log types **2** (connected) and **3** (disconnected), surfaced on the existing USB Detection page. Detects *disks* on a USB interface rather than USB devices generally, so a mouse, monitor, headset or keyboard cannot be flagged — there is no device-class heuristic to get wrong. Types 2–5 were undocumented anywhere upstream; 2 and 3 are now defined in `Agent/src/main/tracker/index.js`, 4 and 5 left unclaimed. |
 
 **Deliberately out of scope:** keystroke *content* capture. It's a keylogger —
 captures passwords, triggers antivirus, carries real legal exposure. Productive time
@@ -117,6 +118,20 @@ doesn't need it, and `DISABLE_KEYSTROKE_FEATURE` already exists.
   so two windows claiming the same minute would inflate the productive-hours
   figure the system exists to produce.
 - **Keystroke *content* capture — permanently out of scope.** It is a keylogger.
+- **Typing and mouse both count as activity, and are not distinguished.**
+  `getSystemIdleTime()` resets on any human input, so neither is favoured.
+  Reporting *which* it was would need a low-level input hook (2.2) and nothing
+  requires it.
+- **English only.** The other five locales are removed from the picker, and a
+  language saved against an older organisation is ignored rather than applied —
+  otherwise an org set to `ar` would land users in a right-to-left UI with no
+  way back. Bundles and the loader remain; restoring one is two lines.
+- **Features with no data source are hidden, not deleted.** Live screen
+  viewing, screen recording, webcam capture, clipboard logs, email activity
+  logs, and the Screen Cast / Screen Recording / Key Strokes profile tabs came
+  from upstream's Qt agent. Ours collects none of it, so the pages could only
+  ever be empty. Routes and components are intact and commented — re-enabling
+  one is a single line. Key Strokes is the exception: permanently out, see above.
 
 ---
 
