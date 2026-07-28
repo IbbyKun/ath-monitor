@@ -114,6 +114,29 @@ minutes is the default and can be changed.
 > Nothing is recorded until shifts are configured and people are assigned to
 > one. Until then everyone is treated as having no fixed hours.
 >
+> ### How the required daily hours are set
+>
+> **The shift's start and end times are the day's length.** 09:00–18:00 means a
+> nine-hour day, and that is what attendance and overtime are measured against.
+> There is no separate "hours per day" box.
+>
+> Three other fields adjust what that day has to contain:
+>
+> | Field | What it does |
+> |---|---|
+> | **Over Time** | How far *past* the shift end before overtime is credited. A threshold, not a target — set 00:30 and someone leaving 20 minutes late gets nothing, 45 minutes late is recorded as 45 minutes of overtime. Defaults to 1 hour if left blank. |
+> | **Half Day** | Hours below which the day is marked `H` instead of `P`. |
+> | **Full-Day / Half-Day Productive Time** | An extra requirement: even with the hours present, the day only counts as full unless *productive* time clears this. Leave blank to judge on attendance alone. |
+>
+> ⚠️ **Careful with Half Day.** The full-day requirement is calculated as
+> **double** the half-day figure — not from the shift length. Set Half Day to 4
+> hours on a 9-hour shift and a "full day" quietly becomes 8 hours, not 9.
+> Leave it blank and it follows the shift correctly.
+>
+> Separately, **Settings → Monitoring Control** has its own productive-hours
+> target (8 hours by default) that drives the dashboard. It is independent of
+> the shift's Full-Day Productive Time — if you want one number, set both.
+>
 > **One thing to decide before using this for anything that affects people:**
 > the app does not yet start automatically when a laptop boots. Someone who
 > starts work on time but opens the app ten minutes later is recorded as ten
