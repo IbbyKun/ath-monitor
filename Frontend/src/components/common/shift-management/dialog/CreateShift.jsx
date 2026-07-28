@@ -471,40 +471,31 @@ const CreateShift = ({ mode = "create" }) => {
                                 </div>
                             </div>
 
-                            {/* Row 2: the one number that drives full/half/absent */}
-                            <div className="grid grid-cols-1 gap-4">
-                                <div>
-                                    <label className="flex items-center gap-1 text-xs font-medium text-slate-600 mb-1">
-                                        Required Productive Time per working day
-                                        <Info className="w-3 h-3 text-blue-500" title="Half day and absent are derived from this" />
-                                    </label>
-                                    <div className="flex items-center gap-1">
-                                        <Input
-                                            type="text"
-                                            value={fullDayProdHrs}
-                                            onChange={(e) => setFullDayProdHrs(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                                            placeholder="HH"
-                                            maxLength={2}
-                                            className="h-9 rounded-lg border-slate-200 text-xs text-center w-14"
-                                        />
-                                        <span className="text-slate-400">:</span>
-                                        <Input
-                                            type="text"
-                                            value={fullDayProdMin}
-                                            onChange={(e) => setFullDayProdMin(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                                            placeholder="MM"
-                                            maxLength={2}
-                                            className="h-9 rounded-lg border-slate-200 text-xs text-center w-14"
-                                        />
-                                    </div>
-                                    <p className="text-xs text-slate-400 mt-1">
-                                        Everything else follows from this. A day counts as
-                                        <strong> full</strong> once productive time reaches about 83% of
-                                        it, <strong> half</strong> down to 50%, and
-                                        <strong> absent</strong> below that. Leave at 00:00 to judge on
-                                        hours at the desk instead.
-                                    </p>
-                                </div>
+                            {/*
+                              No "hours per day" field: the day's required hours
+                              ARE the shift's start and end times above. Set
+                              09:00-17:00 and the requirement is eight hours.
+                              Half day and absent derive from it, so there is
+                              nothing else to keep in step.
+                            */}
+                            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
+                                <p className="text-xs text-slate-500 leading-relaxed">
+                                    <strong className="text-slate-700">How each day is judged.</strong>{" "}
+                                    The hours between the start and end times above are the
+                                    requirement. Time is counted from the employee&rsquo;s timer,
+                                    added up across the day and with idle breaks removed &mdash; so a
+                                    lunch break is not paid. Reach about 83% of the requirement and
+                                    the day is <strong className="text-emerald-600">full</strong>;
+                                    down to 50% it is <strong className="text-amber-600">half</strong>;
+                                    below that, <strong className="text-red-500">absent</strong>.
+                                    Anything past the requirement becomes overtime once it clears
+                                    the Over Time threshold.
+                                </p>
+                                <p className="text-xs text-slate-400 mt-2">
+                                    Whether that time was <em>productive</em> is a separate question,
+                                    answered by the productivity report. It does not affect
+                                    attendance.
+                                </p>
                             </div>
                         </div>
                     </div>

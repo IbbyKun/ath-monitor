@@ -551,13 +551,31 @@ _
 
     static getAttendanceSheet({ organization_id, employeesId, date }) {
         const { start, end } = EmpHelper.getAttMonthRangeDate(date);
-        const query = `SELECT 
-        date, start_time as start, end_time as end, employee_id
-        FROM employee_attendance 
-        WHERE organization_id = ? 
-        AND employee_id IN (?) 
-        AND date BETWEEN ? AND ?
-        ORDER BY date`;
+
+        // `worked_seconds` is the sum of the day's clock sessions, which is not
+        // the same as end_time minus start_time. `employee_attendance` only
+        // holds the outer bounds of the day, so an employee who clocks in at
+        // 09:00, stops for an hour at lunch and finishes at 18:00 spans nine
+        // hours while having worked eight. Reading the span paid people for
+        // their lunch break.
+        //
+        // Sessions live in employee_timesheet, one row per start/stop, with
+        // type 1 = clock (2 is a break) — so summing those durations gives the
+        // time actually on the clock. start/end are still returned because
+        // lateness needs the first clock-in of the day.
+        const query = `SELECT
+            ea.date,
+            MIN(COALESCE(et.start_time, ea.start_time)) AS start,
+            MAX(COALESCE(et.end_time, ea.end_time))     AS end,
+            SUM(CASE WHEN et.type = 1 THEN et.duration ELSE 0 END) AS worked_seconds,
+            ea.employee_id
+        FROM employee_attendance ea
+        LEFT JOIN employee_timesheet et ON et.attendance_id = ea.id
+        WHERE ea.organization_id = ?
+        AND ea.employee_id IN (?)
+        AND ea.date BETWEEN ? AND ?
+        GROUP BY ea.id, ea.date, ea.employee_id
+        ORDER BY ea.date`;
         const paramsArray = [organization_id, employeesId, start, end];
 
         return mySql.query(query, paramsArray);

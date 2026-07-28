@@ -4,7 +4,7 @@ const _ = require('lodash');
 
 const DayCounter = require('./AttDayCounter');
 const moment = MomentRange.extendMoment(Moment);
-const EmpProductivityModel = require('../../../../models/employee_productivity.schema');
+const UserActivityDataModel = require('../../../../models/user_activity_data.schema');
 
 class AttendanceCalculator {
     constructor({ employee, attendanceData, shift, range, orgTimezone }) {
@@ -70,12 +70,17 @@ class AttendanceCalculator {
             const dayOfMonth = day.date();
             const dayOfWeek = day.format('ddd').toLowerCase();
             const { status, time } = shiftWeekData[dayOfWeek];
+            let workedSeconds = null;
 
             if (attData) {
                 attData.map(d => {
                     if (String(new Date(d.date)) === String(new Date(day))) {
                         empCheckin = d.start;
                         empCheckout = d.end;
+                        // Sum of the day's clock sessions — see
+                        // Employee.model.js getAttendanceSheet. Null on rows
+                        // predating that change, which fall back to the span.
+                        workedSeconds = d.worked_seconds == null ? null : Number(d.worked_seconds);
                     }
                 });
             }
@@ -109,7 +114,7 @@ class AttendanceCalculator {
                 }
             }          
 
-            this.attendance[dayOfMonth].log =  await this.parseOneDayLog(empCheckin, empCheckout, time, day);
+            this.attendance[dayOfMonth].log =  await this.parseOneDayLog(empCheckin, empCheckout, time, day, workedSeconds);
             this.next();
             empCheckin='';empCheckout='';
         }
@@ -117,7 +122,7 @@ class AttendanceCalculator {
         return this.getSheet();
     }
 
-    async parseOneDayLog(empStart, empEnd, shiftData, day) {
+    async parseOneDayLog(empStart, empEnd, shiftData, day, workedSeconds = null) {
         const log = {
             time: {},
             marker: 'P',
@@ -140,10 +145,23 @@ class AttendanceCalculator {
                 delete log.time;
                 return log;
             }
-            const { empWorkTime, shiftWorkTime } = this.getWorkTimeDiff(allTimes);
-            const productivity = await fetchProductivity(this.employee.id, this.employee.orgId, day);
+            const { empWorkTime: spanMinutes, shiftWorkTime } = this.getWorkTimeDiff(allTimes);
 
-            const marker = this.classifyDay({ productivity, empWorkTime, shiftWorkTime });
+            // Time actually on the clock, in minutes:
+            //   accumulated sessions  -  idle the agent already discounted
+            //
+            // The agent applies the idle rule itself (a continuous run past
+            // the org's idle threshold is dropped, shorter pauses are not) and
+            // reports the total as breakInSeconds. Nothing consumed it until
+            // now — attendance read the wall-clock span, so both the lunch
+            // break and long idle stretches were paid.
+            let empWorkTime = spanMinutes;
+            if (workedSeconds != null) {
+                const breakSeconds = await fetchBreakSeconds(this.employee.id, this.employee.orgId, day);
+                empWorkTime = Math.max(0, Math.round((workedSeconds - breakSeconds) / 60));
+            }
+
+            const marker = this.classifyDay({ empWorkTime, shiftWorkTime });
             log.marker = marker;
             this.counter.plus(marker);
 
@@ -200,45 +218,37 @@ class AttendanceCalculator {
         return log;
     }
     /**
-     * Decide whether a worked day counts as full, half or absent.
+     * Full day, half day or absent — decided purely by time on the clock.
      *
-     * One number drives it: the productive time a working day is expected to
-     * contain, set per shift as "Full-Day Productive Time". Everything else is
-     * derived from that ratio, so there is nothing to keep in step:
+     * The admin sets one number: the shift's hours per day, from its start and
+     * end times. Everything derives from the ratio of that to time actually
+     * worked:
      *
-     *     ratio = target / actual productive time
+     *     ratio = required / worked
      *
      *       ratio <  1.2  ->  P   full day
      *       ratio <  2    ->  H   half day
      *       otherwise     ->  A   absent
      *
-     * With an 8-hour target that puts the full-day floor at 6h40m and the
-     * half-day floor at 4h. The 1.2 band exists so somebody who works a normal
-     * day but loses twenty minutes to a meeting that isn't on their screen is
-     * not docked half a day for it.
+     * On an 8-hour shift that is a full day from 6h40m and a half day from 4h.
+     * The tolerance band exists so somebody a few minutes short is not docked
+     * half a day for it.
      *
-     * Note this judges **productive** time, not time at the desk — being
-     * clocked in for nine hours with two hours of productive work is a half
-     * day, which is the point of measuring it this way.
+     * Note what this does *not* consider: productivity. Whether the time was
+     * spent in a productive application is a separate question, answered by
+     * the productivity report as productive ÷ total. Attendance is about
+     * whether someone worked their hours; conflating the two meant an employee
+     * could put in a full day and still be marked absent because their tools
+     * had not been classified yet.
      *
-     * If no target is configured the rule cannot apply, and falling through to
-     * "absent" would mark an entire organisation absent the moment they
-     * enabled shifts. So we keep the old hours-at-desk comparison for that
-     * case; configuring a target is what switches the productive-time rule on.
+     * `worked` is accumulated session time minus the idle the agent already
+     * discounted — not the wall-clock span of the day. See parseOneDayLog.
      */
-    classifyDay({ productivity, empWorkTime, shiftWorkTime }) {
-        const target = this.productivity_present;
+    classifyDay({ empWorkTime, shiftWorkTime }) {
+        if (!shiftWorkTime || shiftWorkTime <= 0) return 'A';
+        if (!empWorkTime || empWorkTime <= 0) return 'A';
 
-        if (!target) {
-            const halfDayFloor = this.minWorkingHoursForHalfday || shiftWorkTime / 2;
-            if (empWorkTime <= halfDayFloor) return 'A';
-            if (empWorkTime < shiftWorkTime - this.earlyLogoutPeriod) return 'H';
-            return 'P';
-        }
-
-        if (!productivity || productivity <= 0) return 'A';
-
-        const ratio = target / productivity;
+        const ratio = shiftWorkTime / empWorkTime;
         if (ratio < AttendanceCalculator.FULL_DAY_RATIO) return 'P';
         if (ratio < AttendanceCalculator.HALF_DAY_RATIO) return 'H';
         return 'A';
@@ -352,20 +362,40 @@ class AttendanceCalculator {
  * implementation detail — if the business changes its mind about how much
  * slack a full day gets, this is the one place to change.
  */
-AttendanceCalculator.FULL_DAY_RATIO = 1.2;   // within ~83% of target -> full day
-AttendanceCalculator.HALF_DAY_RATIO = 2;     // at least half the target -> half day
+AttendanceCalculator.FULL_DAY_RATIO = 1.2;   // within ~83% of the required hours -> full day
+AttendanceCalculator.HALF_DAY_RATIO = 2;     // at least half the required hours -> half day
 
 module.exports = AttendanceCalculator;
 
-async function fetchProductivity(empId, orgId, date) {
+/**
+ * Idle the agent has already discounted for this day, in seconds.
+ *
+ * The agent owns the idle rule — a continuous run past the organisation's
+ * threshold is dropped in full, anything shorter is left alone — and reports
+ * the running total as `breakInSeconds` on each activity batch. Recomputing it
+ * here from raw per-second data would risk the two disagreeing, so we just add
+ * up what the agent decided.
+ *
+ * `date` on these documents is DD-MM-YYYY, written by store-logs-api from the
+ * batch's dataId.
+ */
+async function fetchBreakSeconds(empId, orgId, day) {
     try {
-        const formattedDate = new Date(date).toISOString().split('T')[0];
-
-        let query = [{ $match: { organization_id: orgId, employee_id: empId, date: formattedDate } }];
-        let result = await EmpProductivityModel.aggregate(query);
-
-        return result.length > 0 ? result[0].productive_duration : 0;
+        const formattedDate = moment(day).format('DD-MM-YYYY');
+        const result = await UserActivityDataModel.aggregate([
+            { $match: { userId: empId, adminId: orgId, date: formattedDate } },
+            { $group: { _id: null, total: { $sum: '$breakInSeconds' } } },
+        ]);
+        return result.length > 0 ? result[0].total : 0;
     } catch (err) {
-        throw err;  
+        // Attendance must not fail because the activity store is unreachable;
+        // no deduction is a better answer than no report.
+        return 0;
     }
 }
+
+// fetchProductivity() lived here and pulled productive_duration to gate the
+// day's marker. Attendance no longer looks at productivity at all — whether
+// the hours were spent productively is a separate question, answered by the
+// productivity report. Removed rather than left dangling so nobody wires it
+// back in by accident.
