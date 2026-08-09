@@ -26,6 +26,7 @@
 const express = require('express');
 const axios = require('axios');
 const moment = require('moment-timezone');
+const bcrypt = require('bcryptjs');
 
 const authModel = require('../v3/auth/auth.model');
 const redis = require('../v3/auth/services/redis.service');
@@ -101,8 +102,17 @@ router.post('/admin', async (req, res) => {
     }
 
     if (process.env.AUTH_METHOD_V3 === 'true') {
-      if(password !== process.env.ADMIN_PASSWORD){
-        return validationFail(res, 'Invalid password.');
+      // Real per-admin check: a specific email plus a bcrypt-verified
+      // password, not "any email + one shared plaintext secret". The hash
+      // is generated once via scripts/hash-admin-password.js and never
+      // stored or logged in reversible form.
+      const expectedEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+      const passwordHash = process.env.ADMIN_PASSWORD_HASH;
+      if (!expectedEmail || !passwordHash) {
+        return validationFail(res, 'Local admin login is not configured.');
+      }
+      if (email.trim().toLowerCase() !== expectedEmail || !bcrypt.compareSync(password, passwordHash)) {
+        return validationFail(res, 'Invalid credentials.');
       }
       let adminDetails;
       try {

@@ -1,7 +1,7 @@
 {
   "name": "ath-monitor-agent",
   "productName": "ATH Monitor Agent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Desktop time-tracking agent for ATH Monitor — timer, screenshots and app-usage tracking.",
   "author": "ATH Gadlang",
   "license": "MIT",

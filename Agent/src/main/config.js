@@ -7,7 +7,7 @@ const store = require('./store');
 
 // The pilot server. Overridable at runtime from the login screen (handy while
 // the Hostinger box is still being set up) and by env var for development.
-const DEFAULT_SERVER_URL = 'http://localhost:8090';
+const DEFAULT_SERVER_URL = 'http://187.127.207.185';
 
 const CONFIG = {
     /**

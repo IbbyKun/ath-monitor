@@ -67,7 +67,10 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
     volumes: [mysql-data:/var/lib/mysql]
-    ports: ["${MYSQL_PORT:-3306}:3306"]
+    # Bound to localhost only: MySQL has no business being reachable from the
+    # public internet. Containers still reach it via the "mysql" service name
+    # on the internal empnet network regardless of this binding.
+    ports: ["127.0.0.1:${MYSQL_PORT:-3306}:3306"]
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
@@ -80,7 +83,7 @@ services:
     image: mongo:6
     restart: unless-stopped
     volumes: [mongo-data:/data/db]
-    ports: ["${MONGO_PORT:-27017}:27017"]
+    ports: ["127.0.0.1:${MONGO_PORT:-27017}:27017"]
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
@@ -93,7 +96,7 @@ services:
     image: redis:7
     restart: unless-stopped
     volumes: [redis-data:/data]
-    ports: ["${REDIS_PORT:-6379}:6379"]
+    ports: ["127.0.0.1:${REDIS_PORT:-6379}:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -111,8 +114,12 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes: [minio-data:/data]
     ports:
+      # 9000 (S3 API) stays public deliberately: browsers load screenshot
+      # thumbnails directly via presigned URLs, not through the backend. See
+      # DEPLOY.md's "MinIO's api_endpoint must be reachable by the browser".
       - "${MINIO_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      # Admin console — localhost only, reach it via `ssh -L 9001:localhost:9001`.
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
@@ -176,6 +183,11 @@ services:
       MAX_PRE_REQUEST: "86400"
       # Used directly as jwt `expiresIn`; unset makes jsonwebtoken throw.
       BIOMETRIC_EXPIRY: 1y
+      # Also used directly as jwt `expiresIn`, by the outbound sysAuth token
+      # WebSocketNotification.js sends to web-socket-server on connect/reconnect.
+      # Unset (the previous state) makes jsonwebtoken throw an unhandled
+      # rejection every 5s from the reconnect loop — see admin/.env.example.
+      JWT_EXPIRY_SECONDS: 30d
       BRAND_NAME: EmpMonitor
       # Customer-specific org-ID allowlists. The code calls
       # `process.env.X.split(',')` on each WITHOUT a null guard, so leaving any
@@ -193,16 +205,24 @@ services:
       SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
       EMP_ADMIN_EMAIL: ${EMP_ADMIN_EMAIL:-}
       PUSH_NOTIFICATION_TRANSPORT: websocket
-      # Local-dev admin login bypass (no EmpCloud dependency). Leave
-      # AUTH_METHOD_V3 unset in production to use the real SSO path.
+      # Local admin login (no EmpCloud dependency). Leave AUTH_METHOD_V3 unset
+      # in production if you have a real EmpCloud SSO integration instead.
+      # ADMIN_EMAIL + ADMIN_PASSWORD_HASH replace the old plaintext
+      # ADMIN_PASSWORD: login now requires that specific email, and the
+      # password is checked against a bcrypt hash (generate one with
+      # `node Backend/admin/scripts/hash-admin-password.js '<password>'`),
+      # never compared or stored in plaintext.
       AUTH_METHOD_V3: ${AUTH_METHOD_V3:-}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
       ADMIN_DETAILS: ${ADMIN_DETAILS:-}
     depends_on:
       mysql: { condition: service_healthy }
       mongo: { condition: service_healthy }
       redis: { condition: service_healthy }
-    ports: ["${ADMIN_PORT:-3010}:3000"]
+    # Reached in production only via nginx (frontend) proxying to the "admin"
+    # service name on empnet. Published port is for local debugging only.
+    ports: ["127.0.0.1:${ADMIN_PORT:-3010}:3000"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3000/"]
       interval: 20s
@@ -232,7 +252,7 @@ services:
       mysql: { condition: service_healthy }
       mongo: { condition: service_healthy }
       redis: { condition: service_healthy }
-    ports: ["${STORE_LOGS_PORT:-3001}:3001"]
+    ports: ["127.0.0.1:${STORE_LOGS_PORT:-3001}:3001"]
     volumes: [uploads:/app/store-logs-api/public/uploads]
 
   desktop:
@@ -265,7 +285,7 @@ services:
       mysql: { condition: service_healthy }
       mongo: { condition: service_healthy }
       redis: { condition: service_healthy }
-    ports: ["${DESKTOP_PORT:-3002}:3002"]
+    ports: ["127.0.0.1:${DESKTOP_PORT:-3002}:3002"]
 
   cronjobs:
     <<: *node-defaults
@@ -320,7 +340,7 @@ services:
       mysql: { condition: service_healthy }
       mongo: { condition: service_healthy }
       redis: { condition: service_healthy }
-    ports: ["${PRODUCTIVITY_PORT:-3005}:3005"]
+    ports: ["127.0.0.1:${PRODUCTIVITY_PORT:-3005}:3005"]
 
   web-socket-server:
     <<: *node-defaults
@@ -332,7 +352,12 @@ services:
       NODE_ENV: production
       PORT: "8080"
       NOTIFICATION_PREFIX: notification
-    ports: ["${WS_PORT:-8080}:8080"]
+    # Localhost only: the frontend's notification-bell code connects with a
+    # bare root-path WebSocket, which this SockJS service rejects before the
+    # /notification prefix ever gets a chance to handle it (pre-existing
+    # mismatch, unrelated to this binding) — nothing currently depends on
+    # this port being public.
+    ports: ["127.0.0.1:${WS_PORT:-8080}:8080"]
 
   realtime:
     <<: *node-defaults
@@ -349,6 +374,9 @@ services:
       REDIS_PASSWORD_PUBLISHER: ""
     depends_on:
       redis: { condition: service_healthy }
+    # Public deliberately: the frontend's live-monitoring, realtime-insights
+    # and screencast features open a browser WebSocket straight to this
+    # service's root path (VITE_SOCKET_URL), bypassing nginx entirely.
     ports: ["${REALTIME_PORT:-5002}:5002"]
 
   remote_socket:
@@ -362,7 +390,9 @@ services:
       PORT: "5001"
     depends_on:
       redis: { condition: service_healthy }
-    ports: ["${REMOTE_SOCKET_PORT:-5001}:5001"]
+    # Localhost only: functionally redundant with `realtime` for everything
+    # the frontend actually calls (see the comment on that service above).
+    ports: ["127.0.0.1:${REMOTE_SOCKET_PORT:-5001}:5001"]
 
   # ── Frontend (also the public entrypoint / reverse proxy) ──────────────────
   frontend:
@@ -387,7 +417,7 @@ services:
         VITE_PASSWORD_IV: ${VITE_PASSWORD_IV}
         VITE_SHOW_EMP_AI_ASSISTANT: "false"
     depends_on: [admin, store-logs-api]
-    ports: ["${HTTP_PORT:-8090}:80"]
+    ports: ["${HTTP_PORT:-80}:80"]
     networks: [empnet]
 
 networks:

@@ -527,7 +527,15 @@ class UserActivity {
         const first_name = req.body.first_name || user_details[0].first_name;
         const last_name = req.body.last_name || user_details[0].last_name;
         let email = req.body.email ? req.body.email.toLowerCase().trim() : user_details[0].email;
-        let password = req.body.password;
+        // Blank means "keep the existing password". An empty string (what the
+        // edit form sends when the admin leaves the password field blank) is
+        // neither falsy-enough to skip nor valid enough to pass
+        // validateUserUpdate's regex below, so every edit was being rejected
+        // with "password must contain..." unless a brand-new password was
+        // also typed in. Normalizing to null here lets Joi's .allow(null)
+        // skip that check; req.body.password (unchanged) still drives the
+        // real "keep vs. re-encrypt" branch further down.
+        let password = (req.body.password && req.body.password.trim()) ? req.body.password : null;
         let address = req.body.address || user_details[0].address;
         let phone = req.body.phone || user_details[0].phone;
         let location_id = req.body.location_id || user_details[0].location_id;
