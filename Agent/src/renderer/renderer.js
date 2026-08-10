@@ -23,7 +23,6 @@ const el = {
     clockLabel: $('clock-label'),
     clockTime: $('clock-time'),
     clockDetail: $('clock-detail'),
-    toggleBtn: $('toggle-btn'),
     statActive: $('stat-active'),
     statIdle: $('stat-idle'),
     statIdleLabel: $('stat-idle-label'),
@@ -68,13 +67,13 @@ function renderStatus(status) {
     startedAt = status.running && status.startedAt ? new Date(status.startedAt) : null;
 
     el.clock.classList.toggle('running', status.running);
-    el.toggleBtn.classList.toggle('running', status.running);
-    el.toggleBtn.textContent = status.running ? 'Stop timer' : 'Start timer';
     el.clockLabel.textContent = status.running ? 'Tracking' : 'Not tracking';
 
+    // No "press start" copy any more — there is no button to press. Tracking
+    // begins at login and ends when the session does.
     el.clockDetail.textContent = status.running
         ? `About ${status.screenshotsPerHour} screenshots an hour.`
-        : 'Press start when you begin work.';
+        : 'Tracking starts automatically when you sign in to Windows.';
 
     el.statActive.textContent = status.running ? compact(status.activeSeconds) : '—';
 
@@ -153,19 +152,6 @@ el.form.addEventListener('submit', async (event) => {
 el.logoutBtn.addEventListener('click', async () => {
     await window.agent.logout();
     showLogin();
-});
-
-el.toggleBtn.addEventListener('click', async () => {
-    el.toggleBtn.disabled = true;
-    show(el.mainError, null);
-    try {
-        const status = await window.agent.getStatus();
-        const result = status.running ? await window.agent.stopTimer() : await window.agent.startTimer();
-        if (!result.ok) show(el.mainError, result.error);
-        renderStatus(await window.agent.getStatus());
-    } finally {
-        el.toggleBtn.disabled = false;
-    }
 });
 
 window.agent.onStatus(renderStatus);

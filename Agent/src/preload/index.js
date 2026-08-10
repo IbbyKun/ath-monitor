@@ -12,8 +12,8 @@ contextBridge.exposeInMainWorld('agent', {
     login: (email, password, serverUrl) =>
         ipcRenderer.invoke('auth:login', { email, password, serverUrl }),
     logout: () => ipcRenderer.invoke('auth:logout'),
-    startTimer: () => ipcRenderer.invoke('timer:start'),
-    stopTimer: () => ipcRenderer.invoke('timer:stop'),
+    // No startTimer/stopTimer: the timer follows the Windows session and the
+    // main process owns it. Nothing the renderer can call may override that.
     getStatus: () => ipcRenderer.invoke('status:get'),
     drainQueue: () => ipcRenderer.invoke('queue:drain'),
 

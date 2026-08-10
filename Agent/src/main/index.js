@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const { app, BrowserWindow, Tray, Menu, ipcMain, shell, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, shell, nativeImage } = require('electron');
 
 const api = require('./api');
 const store = require('./store');
@@ -48,7 +48,10 @@ function createWindow() {
 
     win.setMenuBarVisibility(false);
     win.loadFile(path.join(__dirname, '../renderer/index.html'));
-    win.once('ready-to-show', () => win.show());
+    // Stay in the tray when Windows launched us at login — tracking starts by
+    // itself, so there is nothing for the employee to do with the window. A
+    // manual launch still shows it.
+    win.once('ready-to-show', () => { if (!LAUNCHED_AT_LOGIN) win.show(); });
 
     // Closing the window while the timer runs should not stop tracking — that
     // is the whole point of a tray app. Quit is explicit, via the tray menu.
@@ -104,14 +107,12 @@ function refreshTray() {
 
     tray.setImage(trayIcon(running));
     tray.setToolTip(running ? 'ATH Monitor — tracking' : 'ATH Monitor — stopped');
+    // No Start/Stop entry. The timer follows the Windows session now, so there
+    // is nothing for the employee to toggle — see startTimer().
     tray.setContextMenu(Menu.buildFromTemplate([
         { label: auth ? `Signed in as ${auth.fullName}` : 'Not signed in', enabled: false },
+        { label: running ? 'Tracking' : 'Not tracking', enabled: false },
         { type: 'separator' },
-        {
-            label: running ? 'Stop timer' : 'Start timer',
-            enabled: !!auth,
-            click: () => (running ? stopTimer() : startTimer()),
-        },
         { label: 'Open', click: showWindow },
         { type: 'separator' },
         { label: 'Quit', click: () => quit() },
@@ -160,6 +161,8 @@ async function doLogin(email, password, serverUrl) {
     await tracker.recoverInterruptedSession(auth);
 
     refreshTray();
+    // Signing in is the start of the shift when there is no Start button.
+    startTimer().catch((err) => console.warn('[main] post-login start failed:', err.message));
     return publicAuth();
 }
 
@@ -218,23 +221,10 @@ function registerIpc() {
         return { ok: true };
     });
 
-    ipcMain.handle('timer:start', async () => {
-        try {
-            await startTimer();
-            return { ok: true };
-        } catch (err) {
-            return { ok: false, error: err.message };
-        }
-    });
-
-    ipcMain.handle('timer:stop', async () => {
-        try {
-            await stopTimer();
-            return { ok: true };
-        } catch (err) {
-            return { ok: false, error: err.message };
-        }
-    });
+    // timer:start / timer:stop are deliberately absent. The timer is driven by
+    // the Windows session, so exposing a channel the renderer could call would
+    // be a way around that — and the renderer is the least trustworthy place in
+    // the app to enforce it from.
 
     ipcMain.handle('queue:drain', async () => {
         await tracker.drainQueue();
@@ -246,8 +236,38 @@ function registerIpc() {
 
 // ── startup / shutdown ──────────────────────────────────────────────────────
 
+/**
+ * Launch the agent when the employee logs in.
+ *
+ * Without this nothing ties the timer to the Windows session — the agent only
+ * runs when someone opens it, which is the manual start it is meant to replace.
+ * NSIS creates shortcuts but no Run entry, so this has to be set from the app.
+ *
+ * `--autostart` marks the login launch so bootstrap can skip showing the
+ * window: tracking begins on its own, and a window appearing at every login is
+ * noise nobody needs to act on.
+ *
+ * Per-user (HKCU Run), matching the per-user install — no admin rights needed.
+ */
+function enableAutoLaunch() {
+    if (process.platform !== 'win32' || !app.isPackaged) return;
+    try {
+        app.setLoginItemSettings({
+            openAtLogin: true,
+            args: ['--autostart'],
+        });
+    } catch (err) {
+        // Never fatal: an agent that cannot register autostart must still track
+        // for the rest of this session.
+        console.warn('[main] could not enable auto-launch:', err.message);
+    }
+}
+
+const LAUNCHED_AT_LOGIN = process.argv.includes('--autostart');
+
 async function bootstrap() {
     app.setAppUserModelId('com.athgadlang.athmonitoragent');
+    enableAutoLaunch();
 
     // Before anything reads the server URL. An agent upgraded in place from a
     // pre-TLS build still has http://<ip> in its store, and that beats the new
@@ -277,21 +297,34 @@ async function bootstrap() {
         }
     });
 
-    // Sleeping/waking is normal on laptops. The per-second sampler simply
-    // stops firing while suspended, so nothing needs undoing — but a resumed
-    // machine is usually back online, which is the right moment to drain.
-    require('electron').powerMonitor.on('resume', () => {
+    // The shift is the Windows session, so the machine going to sleep has to
+    // end the tracked stretch rather than pause inside it. Closing the lid is
+    // the case that matters: without this, a laptop shut at 6pm and opened at
+    // 9am would bank the night as worked time. The per-second sampler stops
+    // firing while suspended, but the session's start time would still span it.
+    const { powerMonitor } = require('electron');
+
+    powerMonitor.on('suspend', () => {
+        stopTimer().catch((err) => console.warn('[main] suspend stop failed:', err.message));
+    });
+
+    powerMonitor.on('resume', () => {
+        // Back online is the right moment to push anything undelivered, and to
+        // begin the next stretch — the employee is at the machine again.
         tracker.drainQueue().catch(() => { /* retried on schedule */ });
+        startTimer().catch((err) => console.warn('[main] resume start failed:', err.message));
     });
 
     const saved = session.load();
     if (saved) {
         auth = saved;
         refreshTray();
-        // Don't auto-start the timer — starting tracking without the user
-        // asking is exactly the behaviour that makes monitoring software feel
-        // untrustworthy. We only recover undelivered data.
         tracker.recoverInterruptedSession(auth).catch(() => { /* non-fatal */ });
+        // Auto-start: the agent launches at login (see enableAutoLaunch), so
+        // this is what ties the timer to the Windows session. Employees have no
+        // Start control any more — tracked time is shift time, breaks included,
+        // which is the whole point of removing the toggle.
+        startTimer().catch((err) => console.warn('[main] autostart failed:', err.message));
     }
 
     app.on('activate', () => {
@@ -303,18 +336,10 @@ async function bootstrap() {
 async function quit() {
     if (quitting) return;
 
-    if (tracker.isRunning) {
-        const { response } = await dialog.showMessageBox({
-            type: 'question',
-            buttons: ['Stop timer and quit', 'Cancel'],
-            defaultId: 0,
-            cancelId: 1,
-            message: 'The timer is still running.',
-            detail: 'Quitting will stop tracking and upload the time recorded so far.',
-        });
-        if (response === 1) return;
-        await stopTimer();
-    }
+    // No confirmation prompt: the employee has no say over the timer any more,
+    // so asking them to approve stopping it is a dialog with one real answer.
+    // Logging off or shutting down reaches here the same way.
+    if (tracker.isRunning) await stopTimer();
 
     quitting = true;
     store.flushNow();
