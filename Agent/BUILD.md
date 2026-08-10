@@ -221,9 +221,14 @@ a git tag, and machines pick it up on their own. Cutting one:
 
 ```bash
 cd Agent
-npm version patch          # bumps package.json AND creates the tag
+npm version patch          # bumps package.json AND creates the agent-v tag
 git push origin main --follow-tags
 ```
+
+Run it from `Agent/`, not the repo root — `Agent/.npmrc` sets
+`tag-version-prefix=agent-v`, and that is what makes the tag match the
+workflow's trigger. npm's default prefix is a bare `v`, which matches nothing;
+the version would move and no release would run.
 
 That fires [`.github/workflows/release-agent.yml`](../.github/workflows/release-agent.yml),
 which builds on a Windows runner, uploads the installer to the VPS, and then
