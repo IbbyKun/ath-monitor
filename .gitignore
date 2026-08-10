@@ -22,6 +22,12 @@ package-lock.json
 # Locally generated shared secrets (JWT/crypto keys reused across services)
 .secrets/
 
+# Per-host TLS wiring, hand-placed on servers that have certificates. Untracked
+# on purpose: the deploy's `git reset --hard` only touches tracked files, so an
+# untracked override survives every push — same reasoning as .env. The template
+# it is copied from IS committed.
+docker-compose.override.yml
+
 # Runtime log dirs the logger creates from an absolute Windows path when
 # NODE_ENV/log paths are misconfigured — never meant to be committed.
 Backend/**/D:\\*

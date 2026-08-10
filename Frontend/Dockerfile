@@ -40,4 +40,14 @@ FROM nginx:1.27-alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+# Shared proxy rules, included by both the :80 and :443 server blocks. Kept
+# OUTSIDE conf.d on purpose: everything in conf.d is auto-included at http
+# context, where a bare `location` is a syntax error.
+COPY nginx-locations.conf /etc/nginx/app-locations.conf
+
+# Empty by default so `include /etc/nginx/tls.d/*.conf` matches nothing and
+# nginx serves :80 alone. Production mounts nginx-tls.conf in here — see
+# docker-compose.override.example.yml.
+RUN mkdir -p /etc/nginx/tls.d /var/www/certbot
+
+EXPOSE 80 443

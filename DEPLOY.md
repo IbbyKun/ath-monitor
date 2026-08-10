@@ -272,6 +272,87 @@ working screenshot *records* with broken thumbnails.
 
 ---
 
+## TLS on the Hostinger pilot
+
+Live at `https://workpulse.athgadlang.com`, with screenshots served from
+`https://storage.workpulse.athgadlang.com`. Both names sit on one Let's Encrypt
+certificate.
+
+**DNS.** Two A records on Cloudflare, both **DNS-only (grey cloud)**, pointing at
+the VPS. Do not proxy them without thinking it through: browsers fetch thumbnails
+straight from MinIO, and Cloudflare's proxy forwards only a fixed port list that
+does **not** include 9000 — orange-clouding before the storage subdomain existed
+would have blacked out every thumbnail.
+
+**Why `:80` is not redirected to `:443`.** Every agent already installed on an
+employee machine posts to `http://<ip>/` — `DEFAULT_SERVER_URL` in
+`Agent/src/main/config.js`. A blanket 301 breaks those uploads, because
+POST-through-redirect is unreliable and a bare IP can never match a certificate.
+Port 80 keeps serving the API until the fleet has been re-pointed at the domain
+and a new installer has gone out. Only then is HSTS worth adding.
+
+**How the config is wired.** The proxy rules live in `Frontend/nginx-locations.conf`
+and are `include`d by both the `:80` block in `nginx.conf` and the `:443` blocks in
+`nginx-tls.conf`, so plaintext and TLS cannot drift apart. `nginx-tls.conf` is
+*not* baked into the image — it is bind-mounted into `/etc/nginx/tls.d/` by
+`docker-compose.override.yml` on hosts that actually have certificates. A dev
+laptop leaves that directory empty, the include glob matches nothing, and nginx
+serves `:80` alone instead of dying on a missing `ssl_certificate`.
+
+**First issuance**, in this order — the ACME challenge route has to be live
+*before* certbot runs, and the certificate has to exist *before* nginx is asked
+to listen on 443:
+
+```bash
+ufw allow 443/tcp                      # ufw is active; without this, nothing works
+
+# 1. Deploy the ACME challenge route (already in nginx.conf) and the certbot
+#    service. Push to main and let the pipeline do it, or on the server:
+cd /root/app && git pull && docker compose up -d --build frontend
+
+# 2. Issue one cert covering both names
+docker compose --profile certs run --rm certbot certonly \
+  --webroot -w /var/www/certbot --non-interactive --agree-tos \
+  -m <ops-email> \
+  -d workpulse.athgadlang.com -d storage.workpulse.athgadlang.com
+
+# 3. Only now activate the :443 blocks
+cp docker-compose.override.example.yml docker-compose.override.yml
+docker compose up -d frontend
+```
+
+`docker-compose.override.yml` is gitignored on purpose. The deploy runs
+`git reset --hard`, which only touches tracked files — so the override, like
+`.env`, survives every push. Certificates live in the `/etc/letsencrypt` host
+bind mount, outside `/root/app`, for the same reason.
+
+**Renewal** is a host-level timer, deliberately not something the deploy touches:
+
+```bash
+cd /root/app
+docker compose --profile certs run --rm certbot renew --webroot -w /var/www/certbot
+docker compose exec frontend nginx -s reload
+```
+
+The whole `/etc/letsencrypt` tree is mounted rather than the two leaf files under
+`live/`. Those are symlinks that renewal repoints at new files in `archive/`;
+mounting the leaves pins the container to the old inode and keeps serving an
+expired certificate after a successful renewal. Mounting the tree means a reload
+is enough.
+
+**Two settings are host-dependent and must move with the domain:**
+
+- `VITE_SOCKET_URL` in `.env` → `wss://workpulse.athgadlang.com/rt/`. It is baked
+  in at **build** time by Vite, so changing it requires a frontend rebuild, not a
+  restart. Leave it on `ws://` and live monitoring dies silently as blocked mixed
+  content. Routing it through nginx's `/rt/` also means the `realtime`
+  container's port 5002 no longer needs to be public.
+- `api_endpoint` in `organization_provider_credentials.creds` →
+  `https://storage.workpulse.athgadlang.com`. This is a database row, not a
+  config file. See the section above for why it cannot be rewritten in flight.
+
+---
+
 ## Scaling: what is easy and what isn't
 
 **Vertical — easy.** Resize the VM in the portal and reboot: ~5 minutes downtime,

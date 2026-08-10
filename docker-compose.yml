@@ -418,6 +418,35 @@ services:
         VITE_SHOW_EMP_AI_ASSISTANT: "false"
     depends_on: [admin, store-logs-api]
     ports: ["${HTTP_PORT:-80}:80"]
+    # Read-only: certbot writes the ACME challenge, nginx only serves it.
+    volumes:
+      - certbot-webroot:/var/www/certbot:ro
+    networks: [empnet]
+
+  # ── TLS certificates (profile: certs) ──────────────────────────────────────
+  # Behind a profile so it never runs on `up` — issuing and renewing are
+  # deliberate actions, not something that should fire on every deploy and burn
+  # Let's Encrypt rate limit.
+  #
+  #   Issue (both names on one cert):
+  #     docker compose --profile certs run --rm certbot certonly \
+  #       --webroot -w /var/www/certbot --non-interactive --agree-tos \
+  #       -m <ops-email> \
+  #       -d workpulse.athgadlang.com -d storage.workpulse.athgadlang.com
+  #
+  #   Renew (what the host timer runs; see DEPLOY.md):
+  #     docker compose --profile certs run --rm certbot renew --webroot -w /var/www/certbot
+  #     docker compose exec frontend nginx -s reload
+  #
+  # /etc/letsencrypt is a host bind mount, not a named volume, so the certs live
+  # outside /root/app and the `git reset --hard` in every deploy cannot touch
+  # them.
+  certbot:
+    profiles: ["certs"]
+    image: certbot/certbot:latest
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
     networks: [empnet]
 
 networks:
@@ -430,3 +459,7 @@ volumes:
   redis-data:
   minio-data:
   uploads:
+  # Shared between certbot (writes) and frontend/nginx (serves) for the ACME
+  # HTTP-01 challenge. Certificates themselves live in the /etc/letsencrypt
+  # host bind mount, not here.
+  certbot-webroot:

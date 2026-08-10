@@ -1,0 +1,27 @@
+# Server-only TLS wiring. Copy to docker-compose.override.yml on a host that
+# has Let's Encrypt certificates; compose picks the override up automatically.
+#
+#     cp docker-compose.override.example.yml docker-compose.override.yml
+#
+# Why this is an override rather than part of docker-compose.yml: the real file
+# is gitignored, exactly like .env, so the `git reset --hard` in every deploy
+# leaves it alone (reset only touches tracked files). It also keeps a dev laptop
+# from trying to mount an /etc/letsencrypt it does not have.
+#
+# Only apply this AFTER the certificate exists. nginx refuses to start if
+# ssl_certificate points at a missing file, which would take the site down.
+# Order of operations is in DEPLOY.md.
+
+services:
+  frontend:
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - certbot-webroot:/var/www/certbot:ro
+      # Loading this is what activates the :443 server blocks.
+      - ./Frontend/nginx-tls.conf:/etc/nginx/tls.d/tls.conf:ro
+      # The whole tree, not the two leaf files under live/ — those are symlinks
+      # that renewal repoints, and a leaf mount would pin nginx to the old
+      # inode and serve an expired certificate. See nginx-tls.conf.
+      - /etc/letsencrypt:/etc/letsencrypt:ro
