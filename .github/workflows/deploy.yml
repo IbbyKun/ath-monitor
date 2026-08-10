@@ -38,24 +38,72 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # Plain ssh rather than appleboy/ssh-action, purely to get retries.
+      #
+      # Reaching this VPS from GitHub's runners is intermittently unreliable —
+      # several runs have died on `dial tcp :22: i/o timeout` after 30s, with
+      # NOTHING in the server's sshd journal for the window. The packets never
+      # arrive, so it is upstream of the box: nothing in ufw (ALLOW, not LIMIT,
+      # and no `recent` rules) and sshd is reachable from elsewhere at the same
+      # moment. Not something the server can fix, so absorb it here instead of
+      # leaving main red and the server un-deployed.
+      #
+      # The retry is safe because the deploy is idempotent: it resets to a
+      # fixed commit and rebuilds. A half-finished attempt costs a rerun of
+      # cached layers, nothing more.
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            set -e
-            cd /root/app
-            if [ ! -f .env ]; then
-              echo "No .env on the server — refusing to deploy blind. Investigate before retrying."
-              exit 1
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          cat > /tmp/deploy.sh <<'REMOTE'
+          set -e
+          cd /root/app
+          if [ ! -f .env ]; then
+            echo "No .env on the server — refusing to deploy blind. Investigate before retrying."
+            exit 1
+          fi
+          git fetch --depth=1 origin main
+          git reset --hard origin/main
+          docker compose build
+          docker compose up -d
+          docker image prune -f
+          REMOTE
+
+          # accept-new keeps the previous action's trust model (a fresh runner
+          # has no known_hosts either way). Pin a host key here if that ever
+          # needs tightening.
+          for attempt in 1 2 3; do
+            echo "::group::SSH attempt $attempt"
+            if ssh -i ~/.ssh/deploy_key \
+                   -o BatchMode=yes \
+                   -o StrictHostKeyChecking=accept-new \
+                   -o ConnectTimeout=30 \
+                   -o ServerAliveInterval=15 \
+                   "$DEPLOY_USER@$DEPLOY_HOST" 'bash -s' < /tmp/deploy.sh; then
+              echo "::endgroup::"
+              echo "deploy succeeded on attempt $attempt"
+              exit 0
             fi
-            git fetch --depth=1 origin main
-            git reset --hard origin/main
-            docker compose build
-            docker compose up -d
-            docker image prune -f
+            echo "::endgroup::"
+            echo "attempt $attempt failed"
+            # Only back off between attempts, not after the last one. Written as
+            # a full `if` rather than `[ ... ] && sleep`, whose non-zero result
+            # on the final pass interacts badly with `set -e`.
+            if [ "$attempt" -lt 3 ]; then
+              sleep $((attempt * 20))
+            fi
+          done
+
+          echo "all 3 SSH attempts failed"
+          exit 1
 
       # Checks the whole chain, not just that something answered on port 80.
       #
