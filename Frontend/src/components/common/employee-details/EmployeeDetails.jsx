@@ -2,14 +2,19 @@ import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import {
-  UserPlus, Upload, RefreshCw, UserCheck, UserX, Trash2,
-  Download, Search, Settings, ArrowUpDown, Eye, Edit, Trash,
-  Monitor, FileDiff, FileBox, FileX, Loader2, UserCog, Clock3,
-  AlertTriangle,
+  UserPlus, UserCheck, UserX, Trash2,
+  Search, Settings, Eye, Edit, Trash,
+  FileDiff, FileBox, FileX, Loader2, UserCog, Clock3,
+  AlertTriangle, MoreVertical, ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -20,7 +25,6 @@ import {
   Dialog, DialogContent, DialogFooter, DialogClose, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import employee from "@/assets/employe.png";
 import PaginationComponent from "@/components/common/Pagination";
 import RegisterEmployeeModal from "./RegisterEmployeeModal";
 import EditEmployeeModal from "./EditEmployeeModal";
@@ -130,23 +134,6 @@ export default function EmployeeDetailsTable({
   const routeBase = location.pathname.startsWith("/non-admin") ? "/non-admin" : "/admin";
   const employeeProfilePath = `${routeBase}/get-employee-details`;
 
-  const handleExport = () => {
-    if (filtered.length === 0) return;
-    const headers = [t("emp_full_name"),t("emp_email_id"),t("location"),t("department"),t("emp_shift"),t("emp_role"),t("emp_emp_code"),t("emp_os"),t("emp_computer_name"),t("version")];
-    const rows = filtered.map((e) => [
-      e.name, e.email, e.location, e.department, e.shift,
-      e.role, e.empCode, e.os, e.computer, e.version,
-    ].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(","));
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `employees_${activeTab}_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const { filtered, paginated, totalPages } = useMemo(() => {
     const list = Array.isArray(employees) ? employees : [];
     const q = (searchQuery || "").trim().toLowerCase();
@@ -236,43 +223,48 @@ export default function EmployeeDetailsTable({
   return (
     <div className="space-y-4">
       <div className="emp-card p-4 sm:p-5">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <img src={employee} alt="employee" className="w-50 h-50" />
-            <div className="border-l-[3px] border-blue-500 pl-3 min-w-0">
-              <h1 className="text-gray-800" style={{ fontSize: "21px", lineHeight: "18px" }}>
-                <span className="font-semibold">{t("employee")}</span>{" "}
-                <span className="text-gray-500 font-normal">{t("emp_details")}</span>
-              </h1>
-              <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
-                {t("emp_manage_desc")}
-              </p>
-            </div>
+        {/* Header — plain heading and one Actions menu. The four gradient
+            buttons and the decorative illustration are gone: they cost the full
+            width of the card and pushed the actual data below the fold. */}
+        <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-[20px] font-semibold text-gray-800 leading-tight">
+              {t("emp_details")}
+            </h1>
+            <p className="text-[13px] text-gray-500 mt-1 leading-relaxed">
+              {t("emp_manage_desc")}
+            </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={() => setRegisterOpen(true)}
-              className="gradient-btn group flex items-center gap-2 text-white text-[13px] h-12 px-3 py-2 rounded-xl border-none shadow-md hover:-translate-y-1 hover:shadow-xl hover:scale-[1.03] active:scale-95 transition-all duration-300">
-              <UserPlus size={20} className="transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
-              <span className="hidden sm:inline">{t("emp_register_employee")}</span>
-            </Button>
-            <Button onClick={() => setBulkRegisterOpen(true)}
-              className="gradient-btn group flex items-center gap-2 text-white text-[13px] h-12 px-3 py-2 rounded-xl border-none shadow-md hover:-translate-y-1 hover:shadow-xl hover:scale-[1.03] active:scale-95 transition-all duration-300">
-              <FileDiff size={20} className="transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" />
-              <span className="hidden sm:inline">{t("emp_bulk_register")}</span>
-            </Button>
-            <Button onClick={() => setBulkUpdateOpen(true)}
-              className="gradient-btn group flex items-center gap-2 text-white text-[13px] h-12 px-3 py-2 rounded-xl border-none shadow-md hover:-translate-y-1 hover:shadow-xl hover:scale-[1.03] active:scale-95 transition-all duration-300">
-              <FileBox size={20} className="transition-transform duration-300 group-hover:rotate-180 group-hover:scale-110" />
-              <span className="hidden sm:inline">{t("emp_bulk_update")}</span>
-            </Button>
-            <Button onClick={() => setBulkDeleteOpen(true)}
-              className="group flex items-center gap-2 text-white text-[13px] h-12 px-3 py-2 rounded-xl border-none shadow-md bg-rose-500 hover:bg-rose-600 hover:-translate-y-1 hover:shadow-xl hover:scale-[1.03] active:scale-95 transition-all duration-300">
-              <FileX size={20} className="transition-transform duration-300 group-hover:scale-110" />
-              <span className="hidden sm:inline">{t("emp_bulk_delete")}</span>
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="gradient-btn flex items-center gap-2 text-white text-[13px] h-10 px-4 rounded-xl border-none shadow-md">
+                {t("action")}
+                <ChevronDown size={16} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-xl p-1.5">
+              <DropdownMenuItem className="gap-2 rounded-lg cursor-pointer text-[13px]"
+                onClick={() => setRegisterOpen(true)}>
+                <UserPlus size={15} className="text-blue-600" /> {t("emp_register_employee")}
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2 rounded-lg cursor-pointer text-[13px]"
+                onClick={() => setBulkRegisterOpen(true)}>
+                <FileDiff size={15} className="text-blue-600" /> {t("emp_bulk_register")}
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2 rounded-lg cursor-pointer text-[13px]"
+                onClick={() => setBulkUpdateOpen(true)}>
+                <FileBox size={15} className="text-blue-600" /> {t("emp_bulk_update")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {/* Destructive actions last and visibly separated, so Bulk Delete
+                  is never the thing a slipped click lands on. */}
+              <DropdownMenuItem className="gap-2 rounded-lg cursor-pointer text-[13px] text-rose-600 focus:text-rose-600 focus:bg-rose-50"
+                onClick={() => setBulkDeleteOpen(true)}>
+                <FileX size={15} /> {t("emp_bulk_delete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Status Tabs */}
@@ -293,8 +285,38 @@ export default function EmployeeDetailsTable({
           </Button>
         </div>
 
-        {/* Filters */}
-        <div className="mt-4">{filter}</div>
+        {/* Toolbar — one row: search, then every filter, then page size pinned
+            right. Previously search and page size sat in a second row below the
+            filters, which split one job across two bands of the card. Each
+            control keeps a label so the baselines line up. */}
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div>
+            <Label className="text-sm font-medium leading-none">{t("search")}</Label>
+            <div className="relative mt-1">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input placeholder={t("search")} value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                className="pl-9 h-10 text-[13px] w-48 sm:w-60 rounded-xl border-gray-200 focus:border-blue-300" />
+            </div>
+          </div>
+
+          {filter}
+
+          <div className="ml-auto">
+            <Label className="text-sm font-medium leading-none">{t("show")}</Label>
+            <div className="mt-1 flex items-center gap-2">
+              <Select value={entriesPerPage} onValueChange={(v) => { setEntriesPerPage(v); setCurrentPage(1); }}>
+                <SelectTrigger className="h-10 w-[84px] text-[13px] rounded-xl border-gray-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {["10","25","50","100"].map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <span className="text-[13px] text-gray-500 font-medium">{t("entries")}</span>
+            </div>
+          </div>
+        </div>
 
         {/* Bulk Action Bar */}
         {selectedRows.length > 0 && (
@@ -337,34 +359,6 @@ export default function EmployeeDetailsTable({
           </div>
         )}
 
-        {/* Table Toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border-b border-gray-100 mt-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[13px] text-gray-500 font-medium">{t("show")}</span>
-            <Select value={entriesPerPage} onValueChange={(v) => { setEntriesPerPage(v); setCurrentPage(1); }}>
-              <SelectTrigger className="h-8 w-[80px] text-[13px] rounded-lg border-gray-200">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                {["10","25","50","100"].map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <span className="text-[13px] text-gray-500 font-medium">{t("entries")}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleExport} disabled={filtered.length === 0}
-              className="h-9 gap-2 text-[13px] font-semibold text-blue-600 border-blue-200 hover:border-blue-400 hover:bg-blue-50 rounded-xl px-3 disabled:opacity-40">
-              <Download size={14} /> {t("emp_export")}
-            </Button>
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <Input placeholder={t("search")} value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                className="pl-9 h-9 text-[13px] w-44 sm:w-52 rounded-xl border-gray-200 focus:border-blue-300" />
-            </div>
-          </div>
-        </div>
-
         {/* Table */}
         <div className="tbl-scroll w-full p-3">
           <Table className="min-w-[900px] bg-gray-100 rounded-4xl">
@@ -381,9 +375,9 @@ export default function EmployeeDetailsTable({
                 <TableHead className="emp-th">{t("emp_shift")}</TableHead>
                 <TableHead className="emp-th">{t("emp_role")}</TableHead>
                 <TableHead className="emp-th">{t("emp_emp_code")}</TableHead>
-                <TableHead className="emp-th">{t("emp_os")}</TableHead>
-                <TableHead className="emp-th">{t("emp_computer_name")}</TableHead>
-                <TableHead className="emp-th">{t("version")}</TableHead>
+                {/* OS, Computer Name and Version removed: the agent does not
+                    report any of them, so all three rendered "N/A" for every
+                    row and only cost horizontal space. */}
                 <TableHead className="text-center pr-4 text-white text-[12px] font-semibold rounded-tr-xl"
                   style={{ background: "linear-gradient(135deg,#3b82f6,#2563eb)" }}>
                   {t("action")}
@@ -394,14 +388,14 @@ export default function EmployeeDetailsTable({
             <TableBody>
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={12} className="py-10 text-center text-sm text-gray-400">
+                  <TableCell colSpan={9} className="py-10 text-center text-sm text-gray-400">
                     <Loader2 size={20} className="animate-spin inline mr-2" />{t("emp_loading_employees")}
                   </TableCell>
                 </TableRow>
               )}
               {!loading && paginated.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={12} className="py-10 text-center text-sm text-gray-400">
+                  <TableCell colSpan={9} className="py-10 text-center text-sm text-gray-400">
                     {t("emp_no_employees_found")}
                   </TableCell>
                 </TableRow>
@@ -432,54 +426,61 @@ export default function EmployeeDetailsTable({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-[13px] text-gray-600 py-2.5 whitespace-nowrap">{emp.empCode}</TableCell>
-                  <TableCell className="py-2.5">
-                    <div className="flex items-center gap-1.5">
-                      <Monitor size={13} className="text-blue-400 flex-shrink-0" />
-                      <span className="text-[13px] text-gray-600 whitespace-nowrap">{emp.os}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-[13px] text-gray-600 py-2.5 whitespace-nowrap">{emp.computer}</TableCell>
-                  <TableCell className="py-2.5">
-                    <span className="text-[13px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-lg whitespace-nowrap">
-                      {emp.version}
-                    </span>
-                  </TableCell>
                   <TableCell className="py-2.5 pr-4">
-                    <div className="flex items-center justify-center gap-1.5">
-                      {activeTab !== "deleted" && (
-                        <button className="action-icon bg-gray-100 text-gray-500 hover:bg-gray-200" title={t("emp_settings")}
-                          onClick={() => navigate(`${routeBase}/track-user-settings?employee_id=${emp.id}`)}>
-                          <Settings size={13} />
-                        </button>
-                      )}
-                      {activeTab !== "deleted" && (
-                        <button className="action-icon bg-emerald-50 text-emerald-500 hover:bg-emerald-100" title={t("edit")}
-                          onClick={() => setEditId(emp.id)}>
-                          <Edit size={13} />
-                        </button>
-                      )}
-                      {activeTab === "active" && (
-                        <button className="action-icon bg-amber-50 text-amber-500 hover:bg-amber-100" title={t("emp_suspend")}
-                          onClick={() => openSuspend(emp.id)}>
-                          <UserX size={13} />
-                        </button>
-                      )}
-                      {(activeTab === "suspended" || activeTab === "deleted") && (
-                        <button className="action-icon bg-emerald-50 text-emerald-500 hover:bg-emerald-100" title={t("emp_restore")}
-                          onClick={() => openActivate(emp.id)}>
-                          <UserCheck size={13} />
-                        </button>
-                      )}
-                      {activeTab !== "deleted" && (
-                        <button className="action-icon bg-rose-50 text-rose-500 hover:bg-rose-100" title={t("delete")}
-                          onClick={() => openDelete(emp.id)}>
-                          <Trash size={13} />
-                        </button>
-                      )}
-                      <button className="action-icon bg-sky-50 text-sky-500 hover:bg-sky-100" title={t("emp_view_assigned_managers")}
-                        onClick={() => setViewManagersFor(emp)}>
-                        <Eye size={13} />
-                      </button>
+                    {/* One menu instead of up to five coloured icon buttons.
+                        Which actions apply still depends on the tab, so the menu
+                        is built from the same conditions the icons used. */}
+                    <div className="flex items-center justify-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="action-icon bg-gray-100 text-gray-500 hover:bg-gray-200"
+                            title={t("action")}
+                            aria-label={t("action")}
+                          >
+                            <MoreVertical size={14} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52 rounded-xl p-1.5">
+                          {activeTab !== "deleted" && (
+                            <DropdownMenuItem className="gap-2 rounded-lg cursor-pointer text-[13px]"
+                              onClick={() => setEditId(emp.id)}>
+                              <Edit size={14} className="text-emerald-600" /> {t("edit")}
+                            </DropdownMenuItem>
+                          )}
+                          {activeTab !== "deleted" && (
+                            <DropdownMenuItem className="gap-2 rounded-lg cursor-pointer text-[13px]"
+                              onClick={() => navigate(`${routeBase}/track-user-settings?employee_id=${emp.id}`)}>
+                              <Settings size={14} className="text-gray-500" /> {t("emp_settings")}
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem className="gap-2 rounded-lg cursor-pointer text-[13px]"
+                            onClick={() => setViewManagersFor(emp)}>
+                            <Eye size={14} className="text-sky-500" /> {t("emp_view_assigned_managers")}
+                          </DropdownMenuItem>
+                          {activeTab === "active" && (
+                            <DropdownMenuItem className="gap-2 rounded-lg cursor-pointer text-[13px]"
+                              onClick={() => openSuspend(emp.id)}>
+                              <UserX size={14} className="text-amber-500" /> {t("emp_suspend")}
+                            </DropdownMenuItem>
+                          )}
+                          {(activeTab === "suspended" || activeTab === "deleted") && (
+                            <DropdownMenuItem className="gap-2 rounded-lg cursor-pointer text-[13px]"
+                              onClick={() => openActivate(emp.id)}>
+                              <UserCheck size={14} className="text-emerald-500" /> {t("emp_restore")}
+                            </DropdownMenuItem>
+                          )}
+                          {activeTab !== "deleted" && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="gap-2 rounded-lg cursor-pointer text-[13px] text-rose-600 focus:text-rose-600 focus:bg-rose-50"
+                                onClick={() => openDelete(emp.id)}>
+                                <Trash size={14} /> {t("delete")}
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </TableCell>
                 </TableRow>

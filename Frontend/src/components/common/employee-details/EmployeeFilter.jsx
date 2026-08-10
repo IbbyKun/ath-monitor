@@ -19,7 +19,12 @@ const EmployeeFilter = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <div className="flex flex-wrap items-center justify-center gap-4">
+    // `contents` rather than a flex row of its own: the parent toolbar in
+    // EmployeeDetails.jsx lays out search, every filter and the page-size
+    // selector as one line, so these selects have to be direct flex items of
+    // that row. Wrapping them in a centred container put them on their own
+    // band and broke the alignment.
+    <div className="contents">
       <div>
         <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{t("emp_all_roles")}</Label>
         <CustomSelect
