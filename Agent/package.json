@@ -15,6 +15,7 @@
     "build:mac": "electron-builder --mac"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "get-windows": "^9.3.0"
   },
   "devDependencies": {

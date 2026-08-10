@@ -25,3 +25,8 @@ services:
       # that renewal repoints, and a leaf mount would pin nginx to the old
       # inode and serve an expired certificate. See nginx-tls.conf.
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      # Desktop agent auto-update feed, served at /updates/. Read-only here:
+      # nginx only serves it, CI uploads into it over SSH. Whoever can write to
+      # this directory decides what every employee machine runs — the installer
+      # is unsigned, so this path is the trust boundary. Keep it root-owned.
+      - /root/agent-updates:/var/www/agent-updates:ro

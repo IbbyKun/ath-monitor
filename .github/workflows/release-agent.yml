@@ -1,0 +1,118 @@
+# Cut a desktop agent release and publish it to the auto-update feed.
+#
+# Deliberately NOT triggered by pushes to main. Shipping code to every employee
+# machine is a decision, not a side effect of a commit — so it takes a tag:
+#
+#   cd Agent && npm version patch      # bumps package.json, creates a git tag
+#   git push origin main --follow-tags
+#
+# The tag must be agent-v<version> and match Agent/package.json exactly; the job
+# refuses to run otherwise. electron-updater compares the feed's version against
+# the installed one, so a release whose package.json was not bumped is invisible
+# to the fleet and silently does nothing.
+#
+# Required secrets (already present for the deploy workflow):
+#   DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY
+
+name: Release agent
+
+on:
+  push:
+    tags: ["agent-v*"]
+  workflow_dispatch: {}
+
+jobs:
+  # Windows runner because the build is Windows-native: get-windows ships a
+  # prebuilt .node addon and electron-builder's NSIS target wants a real
+  # toolchain. Cross-building this from Linux is what npmRebuild: false and
+  # scripts/fetch-win-native.mjs exist to work around — no reason to fight it in
+  # CI when a windows runner is free.
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: Agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check the tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          pkg=$(node -p "require('./package.json').version")
+          tag="${GITHUB_REF#refs/tags/agent-v}"
+          echo "package.json=$pkg tag=$tag"
+          if [ "$pkg" != "$tag" ]; then
+            echo "::error::Tag agent-v$tag does not match Agent/package.json ($pkg)."
+            exit 1
+          fi
+
+      - run: npm ci --no-audit --no-fund
+
+      - run: npm run build:win
+
+      # latest.yml is the file electron-updater actually polls; the .blockmap
+      # lets it fetch only changed chunks instead of the whole installer.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-win
+          path: |
+            Agent/dist/*.exe
+            Agent/dist/*.blockmap
+            Agent/dist/latest.yml
+          if-no-files-found: error
+
+  # Separate Linux job purely so the SSH upload can use a Docker-based action —
+  # those cannot run on Windows runners.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: agent-win
+          path: dist
+
+      # Installer first, manifest second, in two steps on purpose. latest.yml is
+      # what the fleet polls: publish it before the .exe it names and any agent
+      # checking in between downloads a 404 and logs an error.
+      - name: Upload installer
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "dist/*.exe,dist/*.blockmap"
+          target: /root/agent-updates
+          strip_components: 1
+
+      - name: Upload manifest
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "dist/latest.yml"
+          target: /root/agent-updates
+          strip_components: 1
+
+      - name: Verify the feed serves what we just uploaded
+        run: |
+          url="https://workpulse.athgadlang.com/updates/latest.yml"
+          echo "--- $url"
+          curl -fsS "$url" | tee /tmp/latest.yml
+          # The installer named by the manifest must actually be fetchable, or
+          # every agent in the fleet will fail its next check.
+          file=$(grep -E "^path:" /tmp/latest.yml | sed 's/^path:[[:space:]]*//' | tr -d '\r')
+          echo "--- checking installer: $file"
+          # productName is "ATH Monitor Agent", so the filename contains spaces
+          # and must be percent-encoded before it goes into a URL.
+          encoded=$(printf '%s' "$file" | sed 's/ /%20/g')
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://workpulse.athgadlang.com/updates/$encoded")
+          echo "installer responded $code"
+          [ "$code" = "200" ] || exit 1

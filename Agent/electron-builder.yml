@@ -49,6 +49,18 @@ win:
   # the SmartScreen dialog. Keep the metadata, skip only the signature.
   signExecutable: false
 
+  # Must be false BECAUSE we ship unsigned. electron-updater otherwise checks
+  # the downloaded installer's Authenticode publisher against the running app's
+  # and refuses the update when it cannot find one — which, for an unsigned
+  # binary, is always. Left at its default, auto-update simply never applies.
+  #
+  # What this gives up: with no signature to pin, the integrity of an update
+  # rests on TLS to the feed plus the sha512 in latest.yml. That is why the feed
+  # is self-hosted on our own VPS and why write access to the upload directory
+  # is the thing to guard — whoever can write there chooses what every employee
+  # machine runs.
+  verifyUpdateCodeSignature: false
+
 nsis:
   oneClick: false
   perMachine: false          # per-user install => no UAC prompt, no admin needed
@@ -73,3 +85,21 @@ linux:
   target:
     - AppImage
   category: Utility
+
+# ── Auto-update feed ────────────────────────────────────────────────────────
+# Self-hosted rather than GitHub Releases: the repository is public, and a
+# ready-to-run installer for monitoring software is a different exposure from
+# its source. Keeping the feed here also means no third-party rate limits and no
+# token embedded in a shipped binary.
+#
+# `generic` is a DOWNLOAD-only provider — electron-builder cannot publish to it,
+# so `--publish` does nothing useful here. CI builds the installer and uploads
+# it (see .github/workflows/release-agent.yml). The build still emits the
+# latest.yml the updater reads, which is the part that matters.
+#
+# electron-builder bakes this URL into app-update.yml inside the package, so the
+# agent needs no runtime configuration to find its feed.
+publish:
+  provider: generic
+  url: https://workpulse.athgadlang.com/updates/
+  channel: latest

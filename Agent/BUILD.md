@@ -215,8 +215,35 @@ Do this once per release on a real Windows machine — any spare laptop or VM:
 The installer is not committed to the repository — `dist/` is gitignored, and
 a 96 MB binary does not belong in git.
 
-Recommended: attach it to a **GitHub Release** and send people the link.
-Versioned, no email attachment limits, and it gives you a download record.
+**After the first install, you do not distribute builds by hand at all.** The
+agent auto-updates from `https://workpulse.athgadlang.com/updates/`; a release is
+a git tag, and machines pick it up on their own. Cutting one:
+
+```bash
+cd Agent
+npm version patch          # bumps package.json AND creates the tag
+git push origin main --follow-tags
+```
+
+That fires [`.github/workflows/release-agent.yml`](../.github/workflows/release-agent.yml),
+which builds on a Windows runner, uploads the installer to the VPS, and then
+verifies the feed actually serves what it just published.
+
+Two things that will bite if ignored:
+
+- **The version must be bumped.** electron-updater compares the feed's version
+  against the installed one. A release that reuses a version is invisible to the
+  fleet and silently does nothing. `npm version` handles this; hand-editing the
+  tag does not, and the workflow fails the build rather than shipping a release
+  nobody will receive.
+- **Updates apply at the next launch, not immediately.** The download happens
+  quietly during the session; the install happens when the agent next starts. On
+  machines where the timer follows the Windows session, that means the next
+  login. This is deliberate — see the header of `src/main/updater.js` for why
+  installing at quit does not work on Windows.
+
+For the very first install on a machine, or to re-seed one that has fallen too
+far behind, hand someone the `.exe` directly:
 
 ```bash
 gh release create v0.1.0 "dist/ATH Monitor Agent Setup 0.1.0.exe" \
