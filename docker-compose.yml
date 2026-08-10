@@ -114,10 +114,17 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes: [minio-data:/data]
     ports:
-      # 9000 (S3 API) stays public deliberately: browsers load screenshot
-      # thumbnails directly via presigned URLs, not through the backend. See
-      # DEPLOY.md's "MinIO's api_endpoint must be reachable by the browser".
-      - "${MINIO_PORT:-9000}:9000"
+      # Loopback only since the TLS cutover. Browsers still load thumbnails
+      # directly from presigned URLs, but those now point at
+      # https://storage.workpulse.athgadlang.com, which nginx proxies to
+      # minio:9000 over the internal network — so 9000 no longer needs to face
+      # the internet, and publishing it would be a second, unencrypted way in.
+      #
+      # NOTE: binding to 127.0.0.1 is what actually closes this. Docker
+      # publishes ports by DNAT through the FORWARD chain, which ufw's INPUT
+      # rules never see — a `ufw deny 9000` looks like it worked and changes
+      # nothing. The bind address is the control.
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
       # Admin console — localhost only, reach it via `ssh -L 9001:localhost:9001`.
       - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
     healthcheck:
@@ -384,7 +391,10 @@ services:
     # Public deliberately: the frontend's live-monitoring, realtime-insights
     # and screencast features open a browser WebSocket straight to this
     # service's root path (VITE_SOCKET_URL), bypassing nginx entirely.
-    ports: ["${REALTIME_PORT:-5002}:5002"]
+    # Loopback only: the SPA reaches this through nginx at wss://<host>/rt/,
+    # not the published port. See the note on minio's ports — ufw cannot close
+    # a Docker-published port, only the bind address can.
+    ports: ["127.0.0.1:${REALTIME_PORT:-5002}:5002"]
 
   remote_socket:
     <<: *node-defaults
