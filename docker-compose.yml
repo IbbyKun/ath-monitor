@@ -308,6 +308,13 @@ services:
       TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-ACdummy0000000000000000000000000}
       TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-dummy_auth_token}
       REPORT_CRON: ${REPORT_CRON:-0 * * * *}
+      # Same unguarded `process.env.X` read that the admin service documents:
+      # UserNotifications.js does `process.env.ORGANIZATION_ID.length` with no
+      # null check, so leaving it unset throws "Cannot read properties of
+      # undefined (reading 'length')" on every absent-report tick and the
+      # report never runs. Empty string = feature off for every org, which is
+      # the correct default here.
+      ORGANIZATION_ID: ""
     depends_on:
       mysql: { condition: service_healthy }
       mongo: { condition: service_healthy }

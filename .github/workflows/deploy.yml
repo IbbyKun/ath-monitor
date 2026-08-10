@@ -57,11 +57,43 @@ jobs:
             docker compose up -d
             docker image prune -f
 
+      # Checks the whole chain, not just that something answered on port 80.
+      #
+      # This used to curl "/" and require a 200 — which nginx serves from a
+      # static file on disk. Every backend container could be dead and this
+      # step would still pass, which is the one scenario a deploy smoke test
+      # exists to catch. Each check below crosses a boundary the old one did
+      # not: TLS termination, then nginx -> admin, then nginx -> store-logs-api
+      # (the path every desktop agent posts to).
       - name: Smoke test
         run: |
+          set -u
+          host="workpulse.athgadlang.com"
+          fail=0
+
+          check() {
+            name=$1; url=$2; want=$3
+            got=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "$url" || echo 000)
+            if [ "$got" = "$want" ]; then
+              echo "ok   $name -> $got"
+            else
+              echo "FAIL $name -> $got (expected $want)  $url"
+              fail=1
+            fi
+          }
+
+          # Containers are recreated only when their image changed, but give a
+          # restarted one a moment to bind before declaring the deploy broken.
           sleep 10
-          code=$(curl -s -o /dev/null -w "%{http_code}" "http://${{ secrets.DEPLOY_HOST }}/")
-          echo "Frontend responded with $code"
-          if [ "$code" != "200" ]; then
-            exit 1
-          fi
+
+          # SPA over TLS.
+          check "frontend"       "https://$host/"            200
+          # nginx -> admin. 401 proves the backend answered: nginx alone cannot
+          # produce this, and the SPA fallback would return 200 + HTML.
+          check "admin api"      "https://$host/api/v3/"     401
+          # nginx -> store-logs-api, the agent upload path.
+          check "store-logs-api" "https://$host/api/v1/"     403
+          # Plain HTTP still serving agents that predate the TLS cutover.
+          check "http (agents)"  "http://${{ secrets.DEPLOY_HOST }}/" 200
+
+          exit $fail
