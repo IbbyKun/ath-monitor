@@ -20,7 +20,14 @@ services:
     volumes:
       - certbot-webroot:/var/www/certbot:ro
       # Loading this is what activates the :443 server blocks.
-      - ./Frontend/nginx-tls.conf:/etc/nginx/tls.d/tls.conf:ro
+      #
+      # The DIRECTORY, not the file inside it. A single-file bind mount pins the
+      # container to that file's inode, and `git reset --hard` — which every
+      # deploy runs — replaces the file rather than editing it in place. The
+      # mount then keeps serving the old contents while the new ones sit on
+      # disk, with nothing to indicate the config you are reading is not the
+      # config nginx has. Mounting the directory follows the replacement.
+      - ./Frontend/tls.d:/etc/nginx/tls.d:ro
       # The whole tree, not the two leaf files under live/ — those are symlinks
       # that renewal repoints, and a leaf mount would pin nginx to the old
       # inode and serve an expired certificate. See nginx-tls.conf.

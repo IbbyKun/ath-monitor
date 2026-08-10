@@ -74,6 +74,18 @@ jobs:
           git reset --hard origin/main
           docker compose build
           docker compose up -d
+
+          # nginx reads its config once, at worker start. The TLS server blocks
+          # are bind-mounted from the repo rather than baked into the image, so
+          # a commit that touches only Frontend/tls.d/ leaves the frontend
+          # service definition unchanged, `up -d` does not recreate the
+          # container, and the new config sits on disk unread — a deploy that
+          # goes green while changing nothing. Reload so mounted config applies.
+          # `nginx -t` first: a bad config must fail the deploy, not take the
+          # site down on reload.
+          docker compose exec -T frontend nginx -t
+          docker compose exec -T frontend nginx -s reload
+
           docker image prune -f
           REMOTE
 

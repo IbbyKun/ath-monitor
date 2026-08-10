@@ -293,7 +293,7 @@ and a new installer has gone out. Only then is HSTS worth adding.
 
 **How the config is wired.** The proxy rules live in `Frontend/nginx-locations.conf`
 and are `include`d by both the `:80` block in `nginx.conf` and the `:443` blocks in
-`nginx-tls.conf`, so plaintext and TLS cannot drift apart. `nginx-tls.conf` is
+`tls.d/tls.conf`, so plaintext and TLS cannot drift apart. That file is
 *not* baked into the image — it is bind-mounted into `/etc/nginx/tls.d/` by
 `docker-compose.override.yml` on hosts that actually have certificates. A dev
 laptop leaves that directory empty, the include glob matches nothing, and nginx
