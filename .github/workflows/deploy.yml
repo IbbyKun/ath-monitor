@@ -1,31 +1,68 @@
-# Auto-deploy to test server on push to main
+# Auto-deploy to the Hostinger pilot VPS on every push to main.
 #
-# Required GitHub Secrets:
-#   DEPLOY_HOST     - Test server IP (163.227.174.141)
-#   DEPLOY_USER     - SSH username (empcloud-development)
-#   DEPLOY_PASSWORD - SSH password
+# Required GitHub Secrets (Settings -> Secrets and variables -> Actions):
+#   DEPLOY_HOST     - 187.127.207.185
+#   DEPLOY_USER     - root
+#   DEPLOY_SSH_KEY  - private half of the dedicated deploy keypair. The
+#                     public half is already in the VPS's
+#                     ~/.ssh/authorized_keys — this key can't do anything
+#                     else, it's not anyone's personal login.
+#
+# What this does: resets /root/app on the VPS to exactly this commit, then
+# rebuilds and restarts only what actually changed (Docker layer caching
+# means an unrelated commit, e.g. a docs-only change, triggers no rebuilds
+# and no restarts at all).
+#
+# What this deliberately does NOT do:
+#   - Touch .env. It's gitignored and was never part of this repo's history,
+#     so `git reset --hard` can't touch it regardless.
+#   - Run the `migrations` profile. Backend/migrations/emp-monitor.sql is not
+#     idempotent (it re-adds PRIMARY KEYs) — schema changes still need a
+#     deliberate, one-off manual step, never blind automation on every push.
+#   - Touch the desktop agent (Agent/). Cutting a new installer and pushing
+#     it to employees is a separate, deliberate release action, not
+#     something that should happen silently on every backend commit.
 
-name: Deploy to Test Server
+name: Deploy to Hostinger
 
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "Agent/**"
+      - "QT/**"
+      - "**.md"
+  workflow_dispatch: {}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
-          password: ${{ secrets.DEPLOY_PASSWORD }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script_stop: true
           script: |
-            source ~/.nvm/nvm.sh
-            cd /home/empcloud-development/empcloud-projects/empmonitor
-            git pull origin main
-            cd Frontend && VITE_API_URL=/api/v3 npm run build
-            pm2 restart emp-monitor
+            set -e
+            cd /root/app
+            if [ ! -f .env ]; then
+              echo "No .env on the server — refusing to deploy blind. Investigate before retrying."
+              exit 1
+            fi
+            git fetch --depth=1 origin main
+            git reset --hard origin/main
+            docker compose build
+            docker compose up -d
+            docker image prune -f
+
+      - name: Smoke test
+        run: |
+          sleep 10
+          code=$(curl -s -o /dev/null -w "%{http_code}" "http://${{ secrets.DEPLOY_HOST }}/")
+          echo "Frontend responded with $code"
+          if [ "$code" != "200" ]; then
+            exit 1
+          fi
