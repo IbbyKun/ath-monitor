@@ -6,6 +6,13 @@ directories:
   output: dist
   buildResources: build
 
+# build/icon.png (512x512). electron-builder derives the .ico from it, which is
+# what Windows shows on the desktop shortcut, in the Start menu, on the taskbar
+# and in the installer. Without one, all of those fall back to the stock
+# Electron icon — and an anonymous binary that screenshots and autostarts is
+# exactly what antivirus heuristics and suspicious employees both react to.
+icon: build/icon.png
+
 files:
   - src/**/*
   - package.json

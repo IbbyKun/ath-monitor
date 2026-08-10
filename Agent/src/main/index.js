@@ -8,7 +8,7 @@ const store = require('./store');
 const session = require('./session');
 const tracker = require('./tracker');
 const updater = require('./updater');
-const { getServerUrl, setServerUrl, migrateLegacyServerUrl, DEFAULT_SERVER_URL } = require('./config');
+const { getServerUrl, migrateLegacyServerUrl, DEFAULT_SERVER_URL } = require('./config');
 
 const IS_DEV = !!process.env.AGENT_DEV;
 
@@ -149,9 +149,11 @@ async function stopTimer() {
 
 // ── auth ────────────────────────────────────────────────────────────────────
 
-async function doLogin(email, password, serverUrl) {
-    if (serverUrl) setServerUrl(serverUrl);
-
+// No serverUrl parameter. The address is fixed by the build, and removing the
+// input from the sign-in screen is only half of that — leaving the IPC channel
+// able to set it would still let anyone with devtools point their agent at
+// another host. The renderer gets no say.
+async function doLogin(email, password) {
     const result = await api.login(email, password);
     auth = result;
     session.save(result);
@@ -208,9 +210,9 @@ function registerIpc() {
         status: tracker.getStatus(),
     }));
 
-    ipcMain.handle('auth:login', async (_e, { email, password, serverUrl }) => {
+    ipcMain.handle('auth:login', async (_e, { email, password }) => {
         try {
-            return { ok: true, auth: await doLogin(email, password, serverUrl) };
+            return { ok: true, auth: await doLogin(email, password) };
         } catch (err) {
             return { ok: false, error: err.message };
         }

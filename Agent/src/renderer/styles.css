@@ -93,17 +93,6 @@ input:focus-visible {
     box-shadow: 0 0 0 3px rgb(92 225 253 / 0.16);
 }
 
-details#advanced { margin-top: 10px; }
-
-details#advanced summary {
-    cursor: pointer;
-    color: var(--muted);
-    font-size: 12px;
-    list-style: none;
-}
-details#advanced summary::-webkit-details-marker { display: none; }
-details#advanced summary::before { content: "▸ "; }
-details#advanced[open] summary::before { content: "▾ "; }
 
 /* ── buttons ─────────────────────────────────────────────────────────── */
 
@@ -260,4 +249,13 @@ button:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; animation: none !important; }
+}
+
+/* Version + server on the sign-in screen: readable before anyone signs in,
+   which is exactly when support needs to know which build is installed. */
+.signin-meta {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 11px;
+    opacity: 0.65;
 }

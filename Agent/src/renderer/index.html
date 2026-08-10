@@ -24,16 +24,22 @@
             <label for="password">Password</label>
             <input id="password" type="password" autocomplete="current-password" required />
 
-            <details id="advanced">
-                <summary>Server settings</summary>
-                <label for="server">Server address</label>
-                <input id="server" type="text" spellcheck="false" placeholder="https://monitor.example.com" />
-            </details>
+            <!-- The server address is no longer editable. It is baked into the
+                 build (DEFAULT_SERVER_URL in main/config.js), so there is
+                 nothing here for someone to point at another host or mistype
+                 into a support ticket. -->
 
             <p id="login-error" class="error" role="alert" hidden></p>
 
             <button id="login-btn" type="submit" class="primary">Sign in</button>
         </form>
+
+        <!-- Shown on the sign-in screen so the version is readable without
+             signing in first — the one thing worth asking for when something
+             looks wrong. -->
+        <p class="muted signin-meta">
+            <span id="login-server">—</span> · v<span id="login-version">—</span>
+        </p>
     </section>
 
     <!-- ── Timer ───────────────────────────────────────────────────────── -->
@@ -53,8 +59,6 @@
         </div>
 
         <dl class="stats">
-            <div><dt>Active</dt><dd id="stat-active">—</dd></div>
-            <div><dt id="stat-idle-label">Idle removed</dt><dd id="stat-idle">—</dd></div>
             <div><dt>Screenshots</dt><dd id="stat-shots">—</dd></div>
             <div><dt>Pending upload</dt><dd id="stat-queued">—</dd></div>
         </dl>
