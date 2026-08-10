@@ -100,6 +100,26 @@ jobs:
           target: /root/agent-updates
           strip_components: 1
 
+      # A stable filename for first-time installs. The versioned .exe is what
+      # electron-updater fetches, but a human needs a link that does not change
+      # every release — and /updates/ has autoindex off, so nobody can go and
+      # find the current one themselves.
+      - name: Point agent-setup.exe at this release
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd /root/agent-updates
+            # Read the filename from the manifest rather than globbing *.exe —
+            # older releases stay on disk, so a glob would be ambiguous.
+            file=$(grep -E '^path:' latest.yml | sed 's/^path:[[:space:]]*//' | tr -d '\r')
+            test -f "$file"
+            ln -sfn "$file" agent-setup.exe
+            ls -l agent-setup.exe
+
       - name: Verify the feed serves what we just uploaded
         run: |
           url="https://workpulse.athgadlang.com/updates/latest.yml"
@@ -116,3 +136,11 @@ jobs:
             "https://workpulse.athgadlang.com/updates/$encoded")
           echo "installer responded $code"
           [ "$code" = "200" ] || exit 1
+
+          # The link handed to employees for a first install. Broken here means
+          # broken in an email nobody can action.
+          echo "--- checking stable download link"
+          stable=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://workpulse.athgadlang.com/updates/agent-setup.exe")
+          echo "agent-setup.exe responded $stable"
+          [ "$stable" = "200" ] || exit 1

@@ -108,6 +108,41 @@ if (process.env.AGENT_SCREENSHOTS_PER_HOUR) {
     CONFIG.DEFAULT_SCREENSHOTS_PER_HOUR = Number(process.env.AGENT_SCREENSHOTS_PER_HOUR);
 }
 
+// Addresses the fleet used before the TLS cutover. Exact matches only.
+const LEGACY_SERVER_URLS = [
+    'http://187.127.207.185',
+    'https://187.127.207.185',
+];
+
+/**
+ * Move a pre-TLS agent onto the domain.
+ *
+ * getServerUrl() prefers the stored value over DEFAULT_SERVER_URL, and an NSIS
+ * per-user upgrade installs over the top without clearing the store — so
+ * without this, an agent updated from a pre-cutover build would silently keep
+ * posting plaintext to the bare IP. Everything would look healthy, and port 80
+ * could never be closed.
+ *
+ * Only the exact pre-cutover addresses are rewritten, so an agent deliberately
+ * pointed somewhere else (a dev box, a second server) is left alone.
+ *
+ * @returns {boolean} whether anything was migrated
+ */
+function migrateLegacyServerUrl() {
+    const stored = store.get('serverUrl', null);
+    // Never set: DEFAULT_SERVER_URL already applies, nothing to do.
+    if (!stored) return false;
+
+    const normalised = String(stored).replace(/\/+$/, '');
+    if (!LEGACY_SERVER_URLS.includes(normalised)) return false;
+
+    store.set('serverUrl', DEFAULT_SERVER_URL);
+    // Synchronous: a crash before the debounced write would silently undo this
+    // and leave the agent on plaintext for another whole session.
+    store.flushNow();
+    return true;
+}
+
 function getServerUrl() {
     const url = process.env.AGENT_SERVER_URL || store.get('serverUrl', DEFAULT_SERVER_URL);
     return String(url).replace(/\/+$/, '');
@@ -117,4 +152,10 @@ function setServerUrl(url) {
     store.set('serverUrl', String(url).replace(/\/+$/, ''));
 }
 
-module.exports = { CONFIG, getServerUrl, setServerUrl, DEFAULT_SERVER_URL };
+module.exports = {
+    CONFIG,
+    getServerUrl,
+    setServerUrl,
+    migrateLegacyServerUrl,
+    DEFAULT_SERVER_URL,
+};

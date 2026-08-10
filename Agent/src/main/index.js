@@ -8,7 +8,7 @@ const store = require('./store');
 const session = require('./session');
 const tracker = require('./tracker');
 const updater = require('./updater');
-const { getServerUrl, setServerUrl, DEFAULT_SERVER_URL } = require('./config');
+const { getServerUrl, setServerUrl, migrateLegacyServerUrl, DEFAULT_SERVER_URL } = require('./config');
 
 const IS_DEV = !!process.env.AGENT_DEV;
 
@@ -248,6 +248,13 @@ function registerIpc() {
 
 async function bootstrap() {
     app.setAppUserModelId('com.athgadlang.athmonitoragent');
+
+    // Before anything reads the server URL. An agent upgraded in place from a
+    // pre-TLS build still has http://<ip> in its store, and that beats the new
+    // default — see migrateLegacyServerUrl().
+    if (migrateLegacyServerUrl() && IS_DEV) {
+        console.log(`migrated legacy server URL to ${DEFAULT_SERVER_URL}`);
+    }
 
     registerIpc();
     createWindow();

@@ -247,8 +247,27 @@ Two things that will bite if ignored:
   login. This is deliberate — see the header of `src/main/updater.js` for why
   installing at quit does not work on Windows.
 
-For the very first install on a machine, or to re-seed one that has fallen too
-far behind, hand someone the `.exe` directly:
+### First install: send this link
+
+```
+https://workpulse.athgadlang.com/updates/agent-setup.exe
+```
+
+That is a symlink the release workflow repoints at each new build, so the link
+never changes and you can reuse it. Send the link, not the file — the installer
+is ~96 MB and will bounce off most mail servers.
+
+`/updates/` has `autoindex` off, so nobody can browse the directory to find a
+build themselves; this stable name is the only discoverable entry point.
+
+**Upgrading from a pre-TLS build needs no uninstall.** The installer upgrades in
+place and keeps the agent's stored settings — including the old
+`http://<ip>` server URL, which takes precedence over the new default. The agent
+rewrites that on first launch (`migrateLegacyServerUrl` in `src/main/config.js`),
+so an in-place upgrade lands on the domain by itself.
+
+For a machine that has fallen too far behind to update, hand over the `.exe`
+directly:
 
 ```bash
 gh release create v0.1.0 "dist/ATH Monitor Agent Setup 0.1.0.exe" \
