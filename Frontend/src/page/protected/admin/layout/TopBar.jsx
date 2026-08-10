@@ -1,14 +1,12 @@
 import {
-  HelpCircle,
   Settings,
   ShieldCheck,
   Fingerprint,
   LogOut,
+  User,
 } from "lucide-react";
-import NotificationBell from "@/components/common/NotificationBell";
 import { useTranslation } from "react-i18next";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import userData from "@/data/user.json";
 import useAdminSession from "@/sessions/adminSession";
 import {
   DropdownMenu,
@@ -17,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UniPass from "@/components/common/UniPass";
@@ -91,26 +89,24 @@ export default function TopHeader() {
 
         <BackToCloud />
 
-        {/* Help */}
-        <a
-          href="http://help.empmonitor.com/"
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-        >
-          <HelpCircle className="h-4 w-4" />
-          {t("topbar_help")}
-        </a>
-
-        {/* Notification Bell */}
-        <NotificationBell viewAllPath="/admin/behaviour/alertnotification" />
+        {/*
+          The Help link and the notification bell were removed on request. Help
+          pointed at help.empmonitor.com — the upstream vendor's site, which has
+          nothing to say about this deployment.
+        */}
 
         {/* Profile Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Avatar className="h-9 w-9 cursor-pointer ring-2 ring-blue-100 transition-all hover:ring-blue-200">
-              <AvatarImage src={userData.avatar} alt={userData.firstName} />
-              <AvatarFallback>{userData.firstName?.[0]}</AvatarFallback>
+              {/*
+                A generic person icon, not an image. This used to render
+                userData.avatar from src/data/user.json — a bundled sample photo
+                of someone who does not work here, shown to every admin.
+              */}
+              <AvatarFallback className="bg-slate-100 text-[#2B3674]">
+                <User className="h-5 w-5" />
+              </AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -120,8 +116,9 @@ export default function TopHeader() {
             {/* User Info Section */}
             <div className="flex items-center gap-3 px-3 py-4">
               <Avatar className="h-10 w-10 ring-2 ring-blue-50">
-                <AvatarImage src={userData.avatar} alt={userData.firstName} />
-                <AvatarFallback>{userData.firstName?.[0]}</AvatarFallback>
+                <AvatarFallback className="bg-slate-100 text-[#2B3674]">
+                  <User className="h-5 w-5" />
+                </AvatarFallback>
               </Avatar>
               <div className="flex flex-col overflow-hidden">
                 <span className="font-bold text-[#2B3674] truncate text-base">

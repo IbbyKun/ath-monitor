@@ -13,6 +13,15 @@ import {
 } from "@/components/ui/collapsible";
 import { ChevronRight } from "lucide-react";
 
+// Shared by the admin and non-admin sidebars (non-admin/layout/AppSidebar.jsx
+// imports this file directly), so a change here lands in both.
+//
+// Inactive items render in the same #1B2559 as active ones rather than the old
+// washed-out #A3AED0, which read as disabled rather than merely not-current.
+// Active is still unambiguous without the colour difference: bold weight, a
+// slate background, and the indicator bar on the right edge. Icons keep a
+// lighter shade (#64748B, was #cbd5e1 — near-invisible on white) so the icon
+// column still recedes behind the labels.
 const AppMenuItems = ({ item, openKey, setOpenKey }) => {
   const { pathname } = useLocation();
   const isOpen = openKey === item.title;
@@ -42,14 +51,14 @@ const AppMenuItems = ({ item, openKey, setOpenKey }) => {
               <>
                 <item.icon
                   className={`h-5 w-5 shrink-0 transition-colors duration-200 ${
-                    isActive ? "text-[#1B2559]" : "text-[#cbd5e1]"
+                    isActive ? "text-[#1B2559]" : "text-[#64748B]"
                   }`}
                 />
                 <span
                   className={`text-[15px] transition-colors duration-200 ${
                     isActive
                       ? "font-bold text-[#1B2559]"
-                      : "font-medium text-[#A3AED0] hover:text-[#1B2559]"
+                      : "font-medium text-[#1B2559]"
                   }`}
                 >
                   {item.title}
@@ -82,14 +91,14 @@ const AppMenuItems = ({ item, openKey, setOpenKey }) => {
           >
             <item.icon
               className={`h-5 w-5 shrink-0 transition-colors duration-200 ${
-                isChildActive ? "text-[#1B2559]" : "text-[#cbd5e1]"
+                isChildActive ? "text-[#1B2559]" : "text-[#64748B]"
               }`}
             />
             <span
               className={`text-[15px] transition-colors duration-200 ${
                 isChildActive
                   ? "font-bold text-[#1B2559]"
-                  : "font-medium text-[#A3AED0] hover:text-[#1B2559]"
+                  : "font-medium text-[#1B2559]"
               }`}
             >
               {item.title}
@@ -108,7 +117,7 @@ const AppMenuItems = ({ item, openKey, setOpenKey }) => {
                       `relative flex items-center px-3 w-full transition-all duration-200 ${
                         isActive
                           ? "font-bold text-[#1B2559]"
-                          : "font-medium text-[#A3AED0] hover:text-[#1B2559]"
+                          : "font-medium text-[#1B2559]"
                       }`
                     }
                   >

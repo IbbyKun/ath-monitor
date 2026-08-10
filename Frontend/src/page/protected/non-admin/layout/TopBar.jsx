@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { HelpCircle, Settings, LogOut, Fingerprint, RefreshCw, Loader2, AlertCircle, ChevronDown, User } from "lucide-react";
-import NotificationBell from "@/components/common/NotificationBell";
+import { Settings, LogOut, Fingerprint, RefreshCw, Loader2, AlertCircle, ChevronDown, User } from "lucide-react";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -117,12 +116,11 @@ export default function NonAdminTopBar() {
           </DropdownMenu>
         )}
 
-        <button className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-          <HelpCircle className="h-4 w-4" />
-          <span className="hidden lg:inline">{t("topbar_help")}</span>
-        </button>
-
-        <NotificationBell viewAllPath="/non-admin/behaviour/alertnotification" />
+        {/*
+          Help and the notification bell were removed on request. Help pointed
+          at the upstream vendor's site, which has nothing to say about this
+          deployment.
+        */}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

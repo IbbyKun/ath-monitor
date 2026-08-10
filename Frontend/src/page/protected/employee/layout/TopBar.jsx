@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
-  Bell, HelpCircle, LogOut, User, ChevronDown,
+  LogOut, User, ChevronDown,
   RefreshCw, Loader2, AlertCircle,
 } from "lucide-react";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
@@ -134,17 +134,12 @@ export default function EmployeeTopBar() {
           </DropdownMenu>
         )}
 
-        {/* Help */}
-        <button className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-          <HelpCircle className="h-4 w-4" />
-          <span className="hidden lg:inline">{t("topbar_help")}</span>
-        </button>
-
-        {/* Notification */}
-        <div className="relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow-lg hover:bg-slate-100 transition-colors">
-          <Bell className="h-5 w-5 text-gray-600" />
-          <span className="absolute top-1 right-1.5 h-2 w-2 rounded-full bg-red-500" />
-        </div>
+        {/*
+          Help and the notification bell were removed on request. Neither did
+          anything here: the Help button had no onClick at all, and the bell was
+          a static div whose red "unread" dot was hardcoded, so it claimed
+          unread notifications permanently and opened nothing when clicked.
+        */}
 
         {/* Profile dropdown */}
         <DropdownMenu>

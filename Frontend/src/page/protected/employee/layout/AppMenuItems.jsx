@@ -27,8 +27,8 @@ const AppMenuItems = ({ item, openKey, setOpenKey }) => {
           >
             {({ isActive }) => (
               <>
-                <item.icon className={`h-5 w-5 shrink-0 transition-colors duration-200 ${isActive ? "text-[#1B2559]" : "text-[#cbd5e1]"}`} />
-                <span className={`text-[15px] transition-colors duration-200 ${isActive ? "font-bold text-[#1B2559]" : "font-medium text-[#A3AED0] hover:text-[#1B2559]"}`}>
+                <item.icon className={`h-5 w-5 shrink-0 transition-colors duration-200 ${isActive ? "text-[#1B2559]" : "text-[#64748B]"}`} />
+                <span className={`text-[15px] transition-colors duration-200 ${isActive ? "font-bold text-[#1B2559]" : "font-medium text-[#1B2559]"}`}>
                   {item.title}
                 </span>
                 {isActive && (
@@ -50,8 +50,8 @@ const AppMenuItems = ({ item, openKey, setOpenKey }) => {
             tooltip={item.title}
             className={`my-[2px] h-11 transition-all duration-200 hover:bg-slate-50 px-3 ${isChildActive ? "bg-slate-50/50" : ""}`}
           >
-            <item.icon className={`h-5 w-5 shrink-0 ${isChildActive ? "text-[#1B2559]" : "text-[#cbd5e1]"}`} />
-            <span className={`text-[15px] ${isChildActive ? "font-bold text-[#1B2559]" : "font-medium text-[#A3AED0]"}`}>{item.title}</span>
+            <item.icon className={`h-5 w-5 shrink-0 ${isChildActive ? "text-[#1B2559]" : "text-[#64748B]"}`} />
+            <span className={`text-[15px] ${isChildActive ? "font-bold text-[#1B2559]" : "font-medium text-[#1B2559]"}`}>{item.title}</span>
             <ChevronRight className="ml-auto h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 group-data-[collapsible=icon]:hidden" />
           </SidebarMenuButton>
         </CollapsibleTrigger>
@@ -63,7 +63,7 @@ const AppMenuItems = ({ item, openKey, setOpenKey }) => {
                   <NavLink
                     to={child.url}
                     className={({ isActive }) =>
-                      `relative flex items-center px-3 w-full transition-all duration-200 ${isActive ? "font-bold text-[#1B2559]" : "font-medium text-[#A3AED0] hover:text-[#1B2559]"}`
+                      `relative flex items-center px-3 w-full transition-all duration-200 ${isActive ? "font-bold text-[#1B2559]" : "font-medium text-[#1B2559]"}`
                     }
                   >
                     {({ isActive }) => (
