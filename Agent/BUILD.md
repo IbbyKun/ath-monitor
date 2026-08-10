@@ -221,14 +221,20 @@ a git tag, and machines pick it up on their own. Cutting one:
 
 ```bash
 cd Agent
-npm version patch          # bumps package.json AND creates the agent-v tag
+npm run release            # bumps the version, commits, creates the tag
 git push origin main --follow-tags
 ```
 
-Run it from `Agent/`, not the repo root — `Agent/.npmrc` sets
-`tag-version-prefix=agent-v`, and that is what makes the tag match the
-workflow's trigger. npm's default prefix is a bare `v`, which matches nothing;
-the version would move and no release would run.
+**Use `npm run release`, not `npm version patch`.** Plain `npm version` looks
+like it works — it prints the new version and exits 0 — but it creates no commit
+and no tag here, because npm only touches git when `.git` sits in the package
+directory, and ours is the repo root one level up. The version moves, nothing
+ships, and there is nothing in the output to tell you.
+
+`npm run release` bumps the version and then hands off to
+`scripts/release-tag.mjs`, which commits, tags as `agent-v<version>` to match the
+workflow trigger, and makes the tag **annotated** — `git push --follow-tags`
+silently skips lightweight tags, which is the second way this fails quietly.
 
 That fires [`.github/workflows/release-agent.yml`](../.github/workflows/release-agent.yml),
 which builds on a Windows runner, uploads the installer to the VPS, and then
