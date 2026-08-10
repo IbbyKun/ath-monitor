@@ -7,6 +7,7 @@ const api = require('./api');
 const store = require('./store');
 const session = require('./session');
 const tracker = require('./tracker');
+const updater = require('./updater');
 const { getServerUrl, setServerUrl, DEFAULT_SERVER_URL } = require('./config');
 
 const IS_DEV = !!process.env.AGENT_DEV;
@@ -251,6 +252,11 @@ async function bootstrap() {
     registerIpc();
     createWindow();
     buildTray();
+
+    // Early on purpose: if a previous session staged an update, this installs it
+    // and relaunches now, before the timer has anything to lose. See updater.js
+    // for why installing at launch beats installing at quit.
+    updater.init((msg) => { if (IS_DEV) console.log(msg); });
 
     tracker.on('status', (status) => {
         if (win && !win.isDestroyed()) win.webContents.send('status', status);
