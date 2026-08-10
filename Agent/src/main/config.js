@@ -7,7 +7,13 @@ const store = require('./store');
 
 // The pilot server. Overridable at runtime from the login screen (handy while
 // the Hostinger box is still being set up) and by env var for development.
-const DEFAULT_SERVER_URL = 'http://187.127.207.185';
+//
+// Only a DEFAULT: agents installed before this change have the old
+// http://<ip> value persisted in electron-store and keep using it, which is why
+// the server still serves plaintext on port 80. Anything installed from here on
+// talks TLS. Do not close port 80 until the whole fleet has been reinstalled or
+// updated (see DEPLOY.md, "TLS on the Hostinger pilot").
+const DEFAULT_SERVER_URL = 'https://workpulse.athgadlang.com';
 
 const CONFIG = {
     /**
